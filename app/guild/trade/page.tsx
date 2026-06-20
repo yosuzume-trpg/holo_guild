@@ -5,8 +5,7 @@ import { WEAPON_POOL, ARMOR_POOL, ACC_TOOL_POOL } from '@/data/equipment'
 import type { EquipmentMaster } from '@/data/equipment'
 import { useGameStore } from '@/store/gameStore'
 import { useInventoryStore } from '@/store/inventoryStore'
-
-const TRADE_COST = 500
+import { TRADE_COST } from '@/data/constants'
 
 const ATTRIBUTE_LABEL: Record<string, string> = {
   fire: '火', water: '水', wind: '風', earth: '地',

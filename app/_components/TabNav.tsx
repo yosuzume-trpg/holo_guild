@@ -17,6 +17,7 @@ const SUB_TABS: Record<string, { label: string; href: string }[]> = {
     { label: '名簿', href: '/roster' },
   ],
   guild: [
+    { label: 'ランク', href: '/guild/upgrade' },
     { label: '募集', href: '/guild/offer' },
     { label: '貿易', href: '/guild/trade' },
     { label: '商人', href: '/guild/merchant' },

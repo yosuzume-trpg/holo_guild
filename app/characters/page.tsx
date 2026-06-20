@@ -65,7 +65,7 @@ export default function CharactersPage() {
         {characters.map((char) => {
           const master    = getCharacterMaster(char.masterId)
           const asgn      = char.assignment
-          const hpPct     = Math.round((char.currentHp / char.stats.hp) * 100)
+          const hpPct     = Math.round((char.currentHp / (char.stats.hp * char.battleLevel)) * 100)
           const expCur    = expInLevel(char.battleExp, char.battleLevel)
           const expNeeded = 100 * char.battleLevel
           const expPct    = Math.min(100, Math.round((expCur / expNeeded) * 100))

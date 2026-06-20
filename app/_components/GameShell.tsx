@@ -6,7 +6,8 @@ import { usePathname } from 'next/navigation'
 import Header from './Header'
 import TabNav from './TabNav'
 import SetupScreen from './SetupScreen'
-import { useGameStore, CYCLE_DURATION_MS } from '@/store/gameStore'
+import { useGameStore } from '@/store/gameStore'
+import { CYCLE_DURATION_MS, PROD_STAR_BONUS_PER_RANK, PROD_CHAR_LEVEL_BONUS, PROD_DL_BONUS_PER_LEVEL } from '@/data/constants'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
@@ -83,6 +84,24 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
     for (const char of characters) {
       const asgn = char.assignment
       if (!asgn) continue
+
+      // Dungeon auto-grind: DL bonus (+5%/level) + star bonus
+      if (asgn.type === 'dungeon') {
+        const mat = getMaterial(asgn.materialId)
+        if (!mat) continue
+        const dlBonus  = (asgn.level - 1) * PROD_DL_BONUS_PER_LEVEL
+        const starBonus = (char.starRank - 1) * PROD_STAR_BONUS_PER_RANK
+        const rate = mat.ratePerMin * (1 + dlBonus + starBonus)
+        const key = `dungeon:${char.id}:${mat.id}`
+        frac[key] = (frac[key] ?? 0) + rate * elapsedMin
+        const whole = Math.floor(frac[key])
+        if (whole >= 1) {
+          addMaterial(mat.id, whole)
+          frac[key] -= whole
+        }
+        continue
+      }
+
       if (
         asgn.type !== 'farm' &&
         asgn.type !== 'mining' &&
@@ -93,22 +112,26 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       const mat = getMaterial(asgn.materialId)
       if (!mat) continue
 
-      // Tool bonus from equipped tool
+      // Tool bonus from equipped tool (★1=base%, ★2=base×2%, ★3=base×4%, ...)
       let toolBonus = 0
       const toolId = char.equipment.tool
       if (toolId) {
-        const inv = useInventoryStore.getState().equipment.find((e) => e.instanceId === toolId)
-        if (inv) {
-          const toolMaster = getEquipment(inv.masterId)
+        const toolInst = useInventoryStore.getState().equipment.find((e) => e.instanceId === toolId)
+        if (toolInst) {
+          const toolMaster = getEquipment(toolInst.masterId)
           if (toolMaster) {
             const facilityKey = `${asgn.type}Percent` as keyof typeof toolMaster.effects
-            toolBonus = (toolMaster.effects[facilityKey] ?? 0) / 100
+            const basePct = toolMaster.effects[facilityKey] ?? 0
+            if (basePct > 0) toolBonus = basePct * Math.pow(2, toolInst.starRank - 1) / 100
           }
         }
       }
 
+      const facilityLevelKey = `${asgn.type}Level` as keyof typeof char
+      const charLevelBonus = ((char[facilityLevelKey] as number) - 1) * PROD_CHAR_LEVEL_BONUS
+      const starBonus = (char.starRank - 1) * PROD_STAR_BONUS_PER_RANK
       const harvestBonus = (harvestBonuses[mat.id] ?? 0) / 100
-      const rate = mat.ratePerMin * (1 + toolBonus + harvestBonus)
+      const rate = mat.ratePerMin * (1 + toolBonus + harvestBonus + starBonus + charLevelBonus)
       const key = `${char.id}:${mat.id}`
       frac[key] = (frac[key] ?? 0) + rate * elapsedMin
 

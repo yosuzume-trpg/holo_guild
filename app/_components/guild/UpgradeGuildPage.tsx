@@ -6,6 +6,9 @@ import { EQUIPMENT_MASTERS } from '@/data/equipment'
 import { getMaterial } from '@/data/materials'
 import { useGameStore } from '@/store/gameStore'
 import { useInventoryStore } from '@/store/inventoryStore'
+import { useCharacterStore } from '@/store/characterStore'
+import { getCharacterMaster } from '@/data/characters'
+import { EQUIP_UPGRADE_MAT_FACTOR, EQUIP_UPGRADE_GOLD_FACTOR } from '@/data/constants'
 
 interface Props {
   mode: 'blacksmith' | 'tailor'
@@ -38,11 +41,26 @@ export default function UpgradeGuildPage({ mode }: Props) {
   const equipment  = useInventoryStore((s) => s.equipment)
   const removeMaterial = useInventoryStore((s) => s.removeMaterial)
   const upgradeEquipment = useInventoryStore((s) => s.upgradeEquipment)
+  const characters = useCharacterStore((s) => s.characters)
 
-  const slotEquipment = equipment.filter((e) => {
-    const master = EQUIPMENT_MASTERS.find((m) => m.id === e.masterId)
-    return master?.slot === activeSlot
-  })
+  // Map: instanceId → character name (for equipped items)
+  const equippedByName = new Map<string, string>()
+  for (const char of characters) {
+    for (const iid of Object.values(char.equipment)) {
+      if (iid) equippedByName.set(iid, getCharacterMaster(char.masterId)?.name ?? '?')
+    }
+  }
+
+  const slotEquipment = equipment
+    .filter((e) => {
+      const master = EQUIPMENT_MASTERS.find((m) => m.id === e.masterId)
+      return master?.slot === activeSlot
+    })
+    .sort((a, b) => {
+      const nameA = EQUIPMENT_MASTERS.find((m) => m.id === a.masterId)?.name ?? ''
+      const nameB = EQUIPMENT_MASTERS.find((m) => m.id === b.masterId)?.name ?? ''
+      return nameA.localeCompare(nameB, 'ja') || a.starRank - b.starRank
+    })
 
   const item1 = slotEquipment.find((e) => e.instanceId === sel1)
   const item2 = slotEquipment.find((e) => e.instanceId === sel2)
@@ -55,9 +73,9 @@ export default function UpgradeGuildPage({ mode }: Props) {
   )
 
   const matId = MATERIAL_BY_SLOT[activeSlot]
-  const matNeeded = item1 ? item1.starRank * 20 : 0
+  const matNeeded = item1 ? item1.starRank * EQUIP_UPGRADE_MAT_FACTOR : 0
   const matHave = matId ? (useInventoryStore.getState().materials[matId] ?? 0) : 0
-  const upgradeCost = item1 ? 1000 * item1.starRank : 0
+  const upgradeCost = item1 ? EQUIP_UPGRADE_GOLD_FACTOR * item1.starRank : 0
 
   function handleUpgrade() {
     if (!canMerge || !matId) return
@@ -95,28 +113,42 @@ export default function UpgradeGuildPage({ mode }: Props) {
         <div className="text-sm text-slate-400 mb-3">同じ種類・同じ★ランクを2つ選んで合成</div>
         <div className="grid grid-cols-2 gap-3 mb-4">
           {(['sel1', 'sel2'] as const).map((selKey) => {
-            const selVal = selKey === 'sel1' ? sel1 : sel2
-            const setFn  = selKey === 'sel1' ? setSel1 : setSel2
-            const other  = selKey === 'sel1' ? sel2 : sel1
-            const item = slotEquipment.find((e) => e.instanceId === selVal)
+            const isSel1 = selKey === 'sel1'
+            const selVal = isSel1 ? sel1 : sel2
+            const setFn  = isSel1 ? setSel1 : setSel2
+            const other  = isSel1 ? sel2 : sel1
+            const item   = slotEquipment.find((e) => e.instanceId === selVal)
             const master = item ? EQUIPMENT_MASTERS.find((m) => m.id === item.masterId) : null
+            // 素材②: exclude items equipped by anyone; 素材①: show all
+            const candidates = slotEquipment.filter((e) => {
+              if (e.instanceId === other) return false
+              if (!isSel1 && equippedByName.has(e.instanceId)) return false
+              return true
+            })
+            const equippedBy = item ? equippedByName.get(item.instanceId) : undefined
             return (
               <div key={selKey}>
-                <div className="text-xs text-slate-500 mb-1">{selKey === 'sel1' ? '素材①' : '素材②'}</div>
+                <div className="text-xs text-slate-500 mb-1">{isSel1 ? '素材①' : '素材②（未装備のみ）'}</div>
                 <select value={selVal} onChange={(e) => setFn(e.target.value)}
                   className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200">
                   <option value="">選択</option>
-                  {slotEquipment
-                    .filter((e) => e.instanceId !== other)
-                    .map((e) => {
-                      const m = EQUIPMENT_MASTERS.find((em) => em.id === e.masterId)
-                      return <option key={e.instanceId} value={e.instanceId}>★{e.starRank} {m?.name}</option>
-                    })}
+                  {candidates.map((e) => {
+                    const m = EQUIPMENT_MASTERS.find((em) => em.id === e.masterId)
+                    const who = isSel1 ? equippedByName.get(e.instanceId) : undefined
+                    return (
+                      <option key={e.instanceId} value={e.instanceId}>
+                        ★{e.starRank} {m?.name}{who ? ` [${who}装備中]` : ''}
+                      </option>
+                    )
+                  })}
                 </select>
                 {master && item && (
                   <div className="mt-1 text-xs text-slate-400">
                     ★{item.starRank} {master.name}
                     <div className="text-green-400">{master.baseEffectLabel}</div>
+                    {equippedBy && (
+                      <div className="text-yellow-400">⚡ {equippedBy} が装備中 → 強化後も装備維持</div>
+                    )}
                   </div>
                 )}
               </div>

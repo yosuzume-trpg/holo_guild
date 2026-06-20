@@ -6,9 +6,9 @@ import type { CharacterMaster, RegionId, Tendency } from '@/types/game'
 import { useGameStore } from '@/store/gameStore'
 import { useCharacterStore } from '@/store/characterStore'
 import { useDungeonStore } from '@/store/dungeonStore'
-
-const RECRUIT_COST = 300
-const GUARANTEE_THRESHOLD = 60
+import {
+  GUARANTEE_THRESHOLD, RECRUIT_BASE_COST, RECRUIT_COST_STEP, RECRUIT_STEP_COUNT,
+} from '@/data/constants'
 
 const TENDENCY_LABEL: Record<string, string> = {
   standard: '標準',
@@ -30,10 +30,13 @@ interface PullResult {
   char: CharacterMaster
   isNew: boolean
   tendency: Tendency
+  certCount: number
 }
 
 export default function OfferPage() {
   const unlockedRegions = useGameStore((s) => s.unlockedRegions)
+  const guildRank       = useGameStore((s) => s.guildRank)
+  const unlockRegion    = useGameStore((s) => s.unlockRegion)
   const spendGold       = useGameStore((s) => s.spendGold)
   const characters      = useCharacterStore((s) => s.characters)
   const addCharacter    = useCharacterStore((s) => s.addCharacter)
@@ -48,14 +51,18 @@ export default function OfferPage() {
   const [pullResult, setPullResult] = useState<PullResult | null>(null)
   const [showGuarantee, setShowGuarantee] = useState(false)
 
-  const regionChars   = getRegionCharacters(activeRegion)
+  const lockableRegions    = REGIONS.filter((r) => !unlockedRegions.includes(r.id))
+  const pendingUnlockCount = Math.max(0, guildRank - unlockedRegions.length)
+  const hasPendingUnlock   = pendingUnlockCount > 0 && lockableRegions.length > 0
+
+  const recruitCost    = RECRUIT_BASE_COST + RECRUIT_COST_STEP * Math.floor(characters.length / RECRUIT_STEP_COUNT)
+  const regionChars    = getRegionCharacters(activeRegion)
   const ownedMasterIds = new Set(characters.map((c) => c.masterId))
   const points        = recruitPoints[activeRegion] ?? 0
-  const unownedChars  = regionChars.filter((c) => !ownedMasterIds.has(c.id))
-  const canGuarantee  = points >= GUARANTEE_THRESHOLD && unownedChars.length > 0
+  const canGuarantee  = points >= GUARANTEE_THRESHOLD
 
   function handlePull() {
-    if (!spendGold(RECRUIT_COST)) return
+    if (!spendGold(recruitCost)) return
 
     addRecruitPoints(activeRegion, 1)
 
@@ -71,17 +78,21 @@ export default function OfferPage() {
       addCertificate(picked.id, 1)
     }
 
-    setPullResult({ char: picked, isNew, tendency })
+    setPullResult({ char: picked, isNew, tendency, certCount: 1 })
   }
 
   function handleGuaranteePick(char: CharacterMaster) {
-    const newCharId = addCharacter(char.id)
-    const newChar = useCharacterStore.getState().characters.find((c) => c.id === newCharId)
-    const tendency = newChar?.tendency ?? 'standard'
-    // reset points for this region
     useDungeonStore.getState().addRecruitPoints(activeRegion, -points)
     setShowGuarantee(false)
-    setPullResult({ char, isNew: true, tendency })
+    if (ownedMasterIds.has(char.id)) {
+      addCertificate(char.id, 5)
+      setPullResult({ char, isNew: false, tendency: 'standard', certCount: 5 })
+    } else {
+      const newCharId = addCharacter(char.id)
+      const newChar = useCharacterStore.getState().characters.find((c) => c.id === newCharId)
+      const tendency = newChar?.tendency ?? 'standard'
+      setPullResult({ char, isNew: true, tendency, certCount: 0 })
+    }
   }
 
   return (
@@ -104,6 +115,24 @@ export default function OfferPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
+        {/* Pending region unlock */}
+        {hasPendingUnlock && (
+          <div className="bg-yellow-900 border border-yellow-500 rounded-xl p-4 mb-4 space-y-2">
+            <div className="text-sm font-semibold text-yellow-200">
+              🏆 新しい地域を解放できます（残り{pendingUnlockCount}枠）
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {lockableRegions.map((r) => (
+                <button key={r.id}
+                  onClick={() => unlockRegion(r.id)}
+                  className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2 rounded-lg text-sm transition-colors">
+                  {r.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Points + guarantee banner */}
         <div className="flex items-center justify-between mb-3">
           <div className="text-sm text-slate-400">
@@ -139,7 +168,7 @@ export default function OfferPage() {
           onClick={handlePull}
           className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-500 hover:border-yellow-400 text-white font-bold py-3 rounded-lg transition-colors mb-6"
         >
-          募集する（{RECRUIT_COST.toLocaleString()}G）
+          募集する（{recruitCost.toLocaleString()}G）
         </button>
 
         {/* Character roster for this region */}
@@ -201,7 +230,7 @@ export default function OfferPage() {
               </div>
             )}
             {!pullResult.isNew && (
-              <div className="text-sm text-yellow-300 mb-3">証書 ×1</div>
+              <div className="text-sm text-yellow-300 mb-3">証書 ×{pullResult.certCount}</div>
             )}
             <button
               onClick={() => setPullResult(null)}
@@ -224,22 +253,27 @@ export default function OfferPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-base font-bold text-white mb-1">セレクト募集</div>
-            <div className="text-xs text-slate-400 mb-3">未入手のキャラクターを1人選んでください</div>
+            <div className="text-xs text-slate-400 mb-3">キャラクターを1人選んでください（所持済みは証書×5）</div>
             <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-2">
-              {unownedChars.map((char) => (
+              {regionChars.map((char) => {
+                const owned = ownedMasterIds.has(char.id)
+                return (
                 <button
                   key={char.id}
                   onClick={() => handleGuaranteePick(char)}
-                  className="bg-slate-700 hover:bg-slate-600 border border-slate-500 hover:border-yellow-400 rounded-lg p-2 text-center transition-colors"
+                  className={`border rounded-lg p-2 text-center transition-colors ${
+                    owned
+                      ? 'bg-slate-600 border-slate-400 hover:border-yellow-400'
+                      : 'bg-slate-700 hover:bg-slate-600 border-slate-500 hover:border-yellow-400'
+                  }`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center text-sm font-bold text-slate-300 mx-auto mb-1">
+                  <div className="w-10 h-10 rounded-full bg-slate-500 flex items-center justify-center text-sm font-bold text-slate-300 mx-auto mb-1">
                     {char.name.slice(0, 1)}
                   </div>
-                  <div className="text-xs text-slate-200 leading-tight">
-                    {char.name}
-                  </div>
+                  <div className="text-xs text-slate-200 leading-tight">{char.name}</div>
+                  {owned && <div className="text-xs text-yellow-400 mt-0.5">証書×5</div>}
                 </button>
-              ))}
+              )})}
             </div>
             <button
               onClick={() => setShowGuarantee(false)}

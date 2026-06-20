@@ -11,7 +11,7 @@ export interface StoredBattle {
   partyIds: string[]
   partyHps: Record<string, number>
   partyBuffs: Record<string, Buff[]>
-  loot: { gold: number; materials: Record<string, number>; exp: number }
+  loot: { gold: number; materials: Record<string, number>; equipmentMasterIds: string[]; exp: number }
   turnOrder: { id: string; isPlayer: boolean }[]
   currentTurnIndex: number
   battlePhase: 'player-action' | 'result' | null

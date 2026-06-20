@@ -1,6 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { GuildFacility, GuildFacilityId, ProductionFacility, ProductionFacilityId } from '@/types/game'
+import { useGameStore } from './gameStore'
+import {
+  FACILITY_INITIAL_SLOTS, FACILITY_RESEARCH_BONUS_PER_LEVEL,
+  FACILITY_UPGRADE_COST_FACTOR, GR_FACILITY_LEVEL_CAP,
+} from '@/data/constants'
 
 const INITIAL_FACILITY: ProductionFacility = { expansionLevel: 0, researchLevel: 0 }
 const INITIAL_GUILD: GuildFacility = { expansionLevel: 0, researchLevel: 0 }
@@ -34,42 +39,34 @@ export const useFacilityStore = create<FacilityState>()(
       craft: { ...INITIAL_GUILD },
 
       expandProduction: (facility) =>
-        set((s) => ({
-          [facility]: {
-            ...s[facility],
-            expansionLevel: s[facility].expansionLevel + 1,
-          },
-        })),
+        set((s) => {
+          if (s[facility].expansionLevel >= useGameStore.getState().guildRank * GR_FACILITY_LEVEL_CAP) return s
+          return { [facility]: { ...s[facility], expansionLevel: s[facility].expansionLevel + 1 } }
+        }),
 
       researchProduction: (facility) =>
-        set((s) => ({
-          [facility]: {
-            ...s[facility],
-            researchLevel: s[facility].researchLevel + 1,
-          },
-        })),
+        set((s) => {
+          if (s[facility].researchLevel >= useGameStore.getState().guildRank * GR_FACILITY_LEVEL_CAP) return s
+          return { [facility]: { ...s[facility], researchLevel: s[facility].researchLevel + 1 } }
+        }),
 
       expandGuild: (facility) =>
-        set((s) => ({
-          [facility]: {
-            ...s[facility],
-            expansionLevel: s[facility].expansionLevel + 1,
-          },
-        })),
+        set((s) => {
+          if (s[facility].expansionLevel >= useGameStore.getState().guildRank * GR_FACILITY_LEVEL_CAP) return s
+          return { [facility]: { ...s[facility], expansionLevel: s[facility].expansionLevel + 1 } }
+        }),
 
       researchGuild: (facility) =>
-        set((s) => ({
-          [facility]: {
-            ...s[facility],
-            researchLevel: s[facility].researchLevel + 1,
-          },
-        })),
+        set((s) => {
+          if (s[facility].researchLevel >= useGameStore.getState().guildRank * GR_FACILITY_LEVEL_CAP) return s
+          return { [facility]: { ...s[facility], researchLevel: s[facility].researchLevel + 1 } }
+        }),
 
-      getSlotCount: (facility) => 3 + get()[facility].expansionLevel,
+      getSlotCount: (facility) => FACILITY_INITIAL_SLOTS + get()[facility].expansionLevel,
 
-      getResearchBonus: (facility) => get()[facility].researchLevel * 0.01,
+      getResearchBonus: (facility) => get()[facility].researchLevel * FACILITY_RESEARCH_BONUS_PER_LEVEL,
 
-      getUpgradeCost: (level) => 500 * level * level,
+      getUpgradeCost: (level) => FACILITY_UPGRADE_COST_FACTOR * level * level,
     }),
     { name: 'holo-guild-facilities' }
   )

@@ -58,7 +58,7 @@ export default function DungeonPage() {
                   <div>
                     <div className="font-semibold text-slate-100">ダンジョン Lv.{lv}</div>
                     <div className="text-xs text-slate-400 mt-0.5">
-                      敵Lv: ~{lv * 10} ／ 報酬: {lv * 100}G
+                      敵Lv: ~{lv * 10} ／ ボス撃破: {lv * 250}G
                       {cleared && <span className="ml-2 text-green-400">✓ クリア済み</span>}
                     </div>
                   </div>

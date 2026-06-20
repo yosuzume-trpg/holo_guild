@@ -54,6 +54,6 @@ export function getMaterial(id: string): MaterialDef | undefined {
 
 export function getDungeonMaterials(maxClearedLevel: number): MaterialDef[] {
   return MATERIALS.filter(
-    (m) => m.facility === 'dungeon' && (m.dungeonMinLevel ?? 1) <= maxClearedLevel + 1
+    (m) => m.facility === 'dungeon' && (m.dungeonMinLevel ?? 1) <= maxClearedLevel
   )
 }

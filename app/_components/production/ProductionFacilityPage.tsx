@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ProductionFacilityId } from '@/types/game'
 import { MATERIALS_BY_FACILITY } from '@/data/materials'
 import { getCharacterMaster } from '@/data/characters'
@@ -38,10 +38,13 @@ export default function ProductionFacilityPage({ facility }: Props) {
   const materials = MATERIALS_BY_FACILITY[facility]
 
   const gold = useGameStore((s) => s.gold)
+  const guildRank = useGameStore((s) => s.guildRank)
   const spendGold = useGameStore((s) => s.spendGold)
   const characters = useCharacterStore((s) => s.characters)
   const setAssignment = useCharacterStore((s) => s.setAssignment)
+  const gainProductionExp = useCharacterStore((s) => s.gainProductionExp)
   const inventoryMaterials = useInventoryStore((s) => s.materials)
+  const addMaterial = useInventoryStore((s) => s.addMaterial)
   const facilityData = useFacilityStore((s) => s[facility])
   const getSlotCount = useFacilityStore((s) => s.getSlotCount)
   const getResearchBonus = useFacilityStore((s) => s.getResearchBonus)
@@ -51,6 +54,20 @@ export default function ProductionFacilityPage({ facility }: Props) {
 
   const [assigningSlot, setAssigningSlot] = useState<number | null>(null)
   const [selectedMaterial, setSelectedMaterial] = useState<string>(materials[0]?.id ?? '')
+  const manualFracRef = useRef<Record<string, number>>({})
+
+  const maxLevel = guildRank * 10
+
+  function handleManualProduce(charId: string, matId: string, matPrice: number) {
+    const key = `${charId}:${matId}`
+    manualFracRef.current[key] = (manualFracRef.current[key] ?? 0) + 1 / matPrice
+    const whole = Math.floor(manualFracRef.current[key])
+    if (whole >= 1) {
+      addMaterial(matId, whole)
+      gainProductionExp(charId, facility, whole)
+      manualFracRef.current[key] -= whole
+    }
+  }
 
   const slotCount    = getSlotCount(facility)
   const researchBonus = getResearchBonus(facility)
@@ -90,7 +107,7 @@ export default function ProductionFacilityPage({ facility }: Props) {
       <div className="bg-slate-800 rounded-lg p-3 text-sm space-y-1">
         <div className="flex justify-between text-slate-300">
           <span>枠数</span>
-          <span className="font-semibold">{slotCount}</span>
+          <span className="font-semibold">{slotCount} <span className="text-xs text-slate-500">(上限 GR×10={maxLevel})</span></span>
         </div>
         <div className="flex justify-between text-slate-300">
           <span>研究ボーナス</span>
@@ -99,17 +116,17 @@ export default function ProductionFacilityPage({ facility }: Props) {
         <div className="flex gap-2 mt-2">
           <button
             onClick={() => { if (spendGold(expandCost)) expandProduction(facility) }}
-            disabled={gold < expandCost}
+            disabled={gold < expandCost || facilityData.expansionLevel >= maxLevel}
             className="flex-1 text-xs bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-500 rounded py-1.5 transition-colors"
           >
-            拡張 ({expandCost.toLocaleString()}G)
+            {facilityData.expansionLevel >= maxLevel ? '拡張上限' : `拡張 (${expandCost.toLocaleString()}G)`}
           </button>
           <button
             onClick={() => { if (spendGold(researchCost)) researchProduction(facility) }}
-            disabled={gold < researchCost}
+            disabled={gold < researchCost || facilityData.researchLevel >= maxLevel}
             className="flex-1 text-xs bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-500 rounded py-1.5 transition-colors"
           >
-            研究 ({researchCost.toLocaleString()}G)
+            {facilityData.researchLevel >= maxLevel ? '研究上限' : `研究 (${researchCost.toLocaleString()}G)`}
           </button>
         </div>
       </div>
@@ -153,6 +170,14 @@ export default function ProductionFacilityPage({ facility }: Props) {
                     )}
                   </div>
                 </div>
+                {mat && (
+                  <button
+                    onClick={() => handleManualProduce(char.id, mat.id, mat.price)}
+                    className="text-xs bg-slate-600 hover:bg-slate-500 border border-slate-500 text-slate-200 px-2 py-1 rounded transition-colors shrink-0"
+                  >
+                    手動
+                  </button>
+                )}
                 <button
                   onClick={() => handleUnassign(char.id)}
                   className="text-xs text-slate-500 hover:text-red-400 transition-colors shrink-0"

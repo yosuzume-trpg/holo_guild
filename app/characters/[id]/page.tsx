@@ -4,9 +4,14 @@ import { use, useState } from 'react'
 import Link from 'next/link'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
+import { useGameStore } from '@/store/gameStore'
 import { getCharacterMaster } from '@/data/characters'
 import { getEquipment, EQUIPMENT_MASTERS } from '@/data/equipment'
 import type { EquipmentSlot } from '@/types/game'
+import {
+  COMBAT_STAR_BONUS_PER_RANK, EQUIP_WEAPON_ARMOR_STAR_BONUS, EQUIP_ACCESSORY_STAR_BONUS,
+  STAR_GOLD_COST_FACTOR, AFFECTION_POINTS_PER_LEVEL, AFFECTION_GAIN_MIN, AFFECTION_GAIN_RANGE,
+} from '@/data/constants'
 
 const TENDENCY_LABEL: Record<string, string> = {
   standard: '標準',
@@ -41,6 +46,8 @@ export default function CharacterDetailPage({
   const socialize        = useCharacterStore((s) => s.socialize)
   const equip            = useCharacterStore((s) => s.equip)
   const upgradeStarRank  = useCharacterStore((s) => s.upgradeStarRank)
+  const gold             = useGameStore((s) => s.gold)
+  const spendGold        = useGameStore((s) => s.spendGold)
   const equipment        = useInventoryStore((s) => s.equipment)
 
   const [equipModal, setEquipModal] = useState<EquipmentSlot | null>(null)
@@ -58,11 +65,11 @@ export default function CharacterDetailPage({
   }
 
   const master   = getCharacterMaster(char.masterId)
-  const hpPct    = Math.round((char.currentHp / char.stats.hp) * 100)
-  const affPct   = Math.round((char.affectionPoints / (char.affectionLevel * 100)) * 100)
+  const maxHp    = char.stats.hp * char.battleLevel
+  const hpPct    = Math.round((char.currentHp / maxHp) * 100)
+  const affPct   = Math.round((char.affectionPoints / (char.affectionLevel * AFFECTION_POINTS_PER_LEVEL)) * 100)
 
-  // Effective stats: character star rank × equipment star rank
-  const starBonus = (char.starRank - 1) * 0.2
+  const starBonus = (char.starRank - 1) * COMBAT_STAR_BONUS_PER_RANK
   const effStats = (() => {
     let atkM = 1 + starBonus, defM = 1 + starBonus, magM = 1 + starBonus
     let mdefM = 1 + starBonus, hpM = 1 + starBonus, spdM = 1 + starBonus
@@ -71,14 +78,22 @@ export default function CharacterDetailPage({
       const master = inst ? getEquipment(inst.masterId) : null
       if (!master || !inst) continue
       const s = inst.starRank
-      atkM  += (master.effects.atkPercent  ?? 0) / 100 * s
-      defM  += (master.effects.defPercent  ?? 0) / 100 * s
-      magM  += (master.effects.magPercent  ?? 0) / 100 * s
-      mdefM += (master.effects.mdefPercent ?? 0) / 100 * s
-      hpM   += (master.effects.hpPercent   ?? 0) / 100 * s
-      spdM  += (master.effects.spdPercent  ?? 0) / 100 * s
+      const scale = (base: number) => {
+        if (base === 0) return 0
+        return slot === 'accessory'
+          ? (base + EQUIP_ACCESSORY_STAR_BONUS    * (s - 1)) / 100
+          : (base + EQUIP_WEAPON_ARMOR_STAR_BONUS * (s - 1)) / 100
+      }
+      atkM  += scale(master.effects.atkPercent  ?? 0)
+      defM  += scale(master.effects.defPercent  ?? 0)
+      magM  += scale(master.effects.magPercent  ?? 0)
+      mdefM += scale(master.effects.mdefPercent ?? 0)
+      hpM   += scale(master.effects.hpPercent   ?? 0)
+      spdM  += scale(master.effects.spdPercent  ?? 0)
     }
-    const b = char.stats
+    const bl = char.battleLevel
+    const b = { hp: char.stats.hp * bl, atk: char.stats.atk * bl, def: char.stats.def * bl,
+                mag: char.stats.mag * bl, mdef: char.stats.mdef * bl, spd: char.stats.spd * bl }
     return {
       hp: Math.floor(b.hp * hpM), atk: Math.floor(b.atk * atkM), def: Math.floor(b.def * defM),
       mag: Math.floor(b.mag * magM), mdef: Math.floor(b.mdef * mdefM), spd: Math.floor(b.spd * spdM),
@@ -116,27 +131,30 @@ export default function CharacterDetailPage({
             {TENDENCY_LABEL[char.tendency]}タイプ
           </span>
         </div>
-        <div className="flex items-center justify-center gap-3 text-xs">
-          <span className="text-slate-400">証書 {char.certificates}枚</span>
-          {char.starRank < 5 ? (
-            <button
-              onClick={() => upgradeStarRank(char.id)}
-              disabled={char.certificates < char.starRank * 10}
-              className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-bold px-3 py-1 rounded-full transition-colors"
-            >
-              ★アップ（証書×{char.starRank * 10}）
-            </button>
-          ) : (
-            <span className="text-yellow-300 font-bold">MAX</span>
-          )}
-        </div>
+        {(() => {
+          const certCost = Math.pow(2, char.starRank - 1)
+          const goldCost = STAR_GOLD_COST_FACTOR * char.starRank
+          const canUpgrade = char.certificates >= certCost && gold >= goldCost
+          return (
+            <div className="flex items-center justify-center gap-3 text-xs">
+              <span className="text-slate-400">証書 {char.certificates}枚</span>
+              <button
+                onClick={() => { if (spendGold(goldCost)) upgradeStarRank(char.id) }}
+                disabled={!canUpgrade}
+                className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-bold px-3 py-1 rounded-full transition-colors"
+              >
+                ★アップ（証書×{certCost} / {goldCost}G）
+              </button>
+            </div>
+          )
+        })()}
       </div>
 
       {/* HP */}
       <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-3">
         <div className="flex justify-between text-sm mb-1">
           <span className="text-slate-400">HP</span>
-          <span className="text-slate-200">{char.currentHp} / {char.stats.hp}</span>
+          <span className="text-slate-200">{char.currentHp} / {maxHp}</span>
         </div>
         <div className="w-full h-2 bg-slate-700 rounded-full">
           <div
@@ -246,27 +264,32 @@ export default function CharacterDetailPage({
               }
               return slotItems.map((e) => {
                 const m = getEquipment(e.masterId)
-                const isEquipped  = char.equipment[equipModal] === e.instanceId
-                const usedByOther = equippedByOthers.has(e.instanceId)
-                const otherChar   = usedByOther
+                const isEquipped    = char.equipment[equipModal] === e.instanceId
+                const usedByOther   = equippedByOthers.has(e.instanceId)
+                const rankTooHigh   = e.starRank > char.starRank
+                const isDisabled    = (usedByOther || rankTooHigh) && !isEquipped
+                const otherChar     = usedByOther
                   ? characters.find((c) => c.id !== char.id && Object.values(c.equipment).includes(e.instanceId))
                   : null
-                const otherName   = otherChar ? getCharacterMaster(otherChar.masterId)?.name : null
+                const otherName     = otherChar ? getCharacterMaster(otherChar.masterId)?.name : null
                 return (
                   <button key={e.instanceId}
-                    disabled={usedByOther && !isEquipped}
-                    onClick={() => { if (!usedByOther) { equip(char.id, equipModal, e.instanceId); setEquipModal(null) } }}
+                    disabled={isDisabled}
+                    onClick={() => { if (!isDisabled) { equip(char.id, equipModal, e.instanceId); setEquipModal(null) } }}
                     className={`w-full rounded-lg px-3 py-2.5 text-left border transition-colors ${
                       isEquipped
                         ? 'border-yellow-400 bg-yellow-900 text-yellow-100'
-                        : usedByOther
+                        : isDisabled
                         ? 'border-slate-700 bg-slate-800 opacity-50 cursor-not-allowed'
                         : 'border-slate-600 bg-slate-700 hover:bg-slate-600 text-slate-200'}`}>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold">★{e.starRank} {m?.name}</span>
                       {isEquipped && <span className="text-xs text-yellow-400">装備中</span>}
-                      {usedByOther && !isEquipped && (
+                      {!isEquipped && usedByOther && (
                         <span className="text-xs text-slate-500">{otherName} が装備中</span>
+                      )}
+                      {!isEquipped && !usedByOther && rankTooHigh && (
+                        <span className="text-xs text-red-400">★{char.starRank}以下のみ</span>
                       )}
                     </div>
                     {m?.baseEffectLabel && (
@@ -284,7 +307,7 @@ export default function CharacterDetailPage({
       <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-4">
         <div className="flex justify-between text-sm mb-1">
           <span className="text-slate-400">親愛度 Lv.{char.affectionLevel}</span>
-          <span className="text-slate-200">{char.affectionPoints} / {char.affectionLevel * 100}</span>
+          <span className="text-slate-200">{char.affectionPoints} / {char.affectionLevel * AFFECTION_POINTS_PER_LEVEL}</span>
         </div>
         <div className="w-full h-1.5 bg-slate-700 rounded-full mb-2">
           <div
@@ -297,7 +320,7 @@ export default function CharacterDetailPage({
           disabled={char.socializedThisCycle}
           className="w-full bg-pink-700 hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-2 rounded-lg transition-colors"
         >
-          {char.socializedThisCycle ? '今日は交遊済み' : '交遊する (+95〜105 pt)'}
+          {char.socializedThisCycle ? '今日は交遊済み' : `交遊する (+${AFFECTION_GAIN_MIN}〜${AFFECTION_GAIN_MIN + AFFECTION_GAIN_RANGE - 1} pt)`}
         </button>
       </div>
     </div>

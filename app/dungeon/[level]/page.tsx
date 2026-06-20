@@ -3,48 +3,59 @@
 import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CharacterInstance, EnemyInstance, Buff, StageType, Attribute } from '@/types/game'
-import { getCharacterMaster } from '@/data/characters'
-import { getEquipment } from '@/data/equipment'
-import { getDungeonMaterials } from '@/data/materials'
+import { getCharacterMaster, REGIONS } from '@/data/characters'
+import { getEquipment, EQUIPMENT_MASTERS } from '@/data/equipment'
+import { getDungeonMaterials, getMaterial } from '@/data/materials'
 import { DUNGEON_ITEMS, getRecipe } from '@/data/recipes'
 import { useGameStore } from '@/store/gameStore'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
 import type { StoredBattle } from '@/store/dungeonStore'
+import {
+  ATTR_ADVANTAGE, DUNGEON_ATTR,
+  ATTR_ADVANTAGE_MULT, ATTR_DISADVANTAGE_MULT,
+  ENEMY_BASE_STATS, ENEMY_EXP_BASE, ITEM_EFFECTS,
+  COMBAT_STAR_BONUS_PER_RANK, EQUIP_WEAPON_ARMOR_STAR_BONUS, EQUIP_ACCESSORY_STAR_BONUS,
+  RECOVERY_HEAL_PERCENT,
+  CHEST_GOLD_FACTOR, CHEST_MATERIAL_THRESHOLD, CHEST_POTION_THRESHOLD, CHEST_EQUIP_THRESHOLD,
+  CHEST_MAT_MIN, CHEST_MAT_RANGE,
+  BATTLE_GOLD_NORMAL_FACTOR, BATTLE_GOLD_ELITE_FACTOR, BATTLE_GOLD_BOSS_FACTOR,
+  BATTLE_MAT_NORMAL_MIN, BATTLE_MAT_NORMAL_RANGE, BATTLE_MAT_ELITE_MIN, BATTLE_MAT_ELITE_RANGE,
+  RETREAT_REWARD_RATE, BUFF_DURATION_TURNS,
+  STAGE2_BATTLE_CHANCE, STAGE4_RECOVERY_THRESHOLD, STAGE4_CHEST_THRESHOLD, STAGE5_ELITE_CHANCE, DUNGEON_BRANCH_CHANCE,
+  ENEMY_TYPE_THRESHOLD_STANDARD, ENEMY_TYPE_THRESHOLD_ATTACK, ENEMY_TYPE_THRESHOLD_MAGIC,
+  ENEMY_COUNT_DL_THRESHOLD, ENEMY_COUNT_LOW_MIN, ENEMY_COUNT_LOW_MAX,
+  ENEMY_COUNT_HIGH_MIN, ENEMY_COUNT_HIGH_MAX,
+  GR_UPGRADE_MAT_COST,
+} from '@/data/constants'
 
 type BattleState = StoredBattle
 
 // ─── Constants ─────────────────────────────────────────────────────────────
-const ATTR_ADVANTAGE: Record<string, string> = {
-  fire: 'wind', wind: 'earth', earth: 'water', water: 'fire',
-}
 const ATTR_LABEL: Record<string, string>  = { fire: '火', wind: '風', earth: '地', water: '水' }
 const ATTR_COLOR: Record<string, string>  = {
   fire: 'text-red-400', wind: 'text-green-400', earth: 'text-yellow-600', water: 'text-blue-400',
 }
-const DUNGEON_ATTR: Attribute[] = ['fire', 'wind', 'earth', 'water']
 
 type EnemyTypeKey = 'standard' | 'attack' | 'magic' | 'defense' | 'elite' | 'boss'
+function scaleStats(base: typeof ENEMY_BASE_STATS[keyof typeof ENEMY_BASE_STATS]) {
+  return (d: number): EnemyInstance['stats'] => ({
+    hp: base.hp*d, atk: base.atk*d, def: base.def*d,
+    mag: base.mag*d, mdef: base.mdef*d, spd: base.spd*d,
+  })
+}
 const ENEMY_STATS: Record<EnemyTypeKey, (d: number) => EnemyInstance['stats']> = {
-  standard: (d) => ({ hp: 125*d, atk: 75*d,  def: 40*d, mag: 75*d,  mdef: 40*d, spd: 8*d  }),
-  attack:   (d) => ({ hp: 125*d, atk: 90*d,  def: 50*d, mag: 30*d,  mdef: 25*d, spd: 10*d }),
-  magic:    (d) => ({ hp: 125*d, atk: 30*d,  def: 25*d, mag: 90*d,  mdef: 50*d, spd: 10*d }),
-  defense:  (d) => ({ hp: 150*d, atk: 40*d,  def: 65*d, mag: 40*d,  mdef: 65*d, spd: 5*d  }),
-  elite:    (d) => ({ hp: 270*d, atk: 95*d,  def: 40*d, mag: 95*d,  mdef: 40*d, spd: 9*d  }),
-  boss:     (d) => ({ hp: 600*d, atk: 110*d, def: 40*d, mag: 110*d, mdef: 40*d, spd: 10*d }),
+  standard: scaleStats(ENEMY_BASE_STATS.standard),
+  attack:   scaleStats(ENEMY_BASE_STATS.attack),
+  magic:    scaleStats(ENEMY_BASE_STATS.magic),
+  defense:  scaleStats(ENEMY_BASE_STATS.defense),
+  elite:    scaleStats(ENEMY_BASE_STATS.elite),
+  boss:     scaleStats(ENEMY_BASE_STATS.boss),
 }
-const ENEMY_EXP: Record<EnemyTypeKey, (d: number) => number> = {
-  standard: (d) => 20*d, attack: (d) => 20*d, magic: (d) => 20*d,
-  defense:  (d) => 20*d, elite:  (d) => 50*d, boss:  (d) => 100*d,
-}
-const ITEM_EFFECTS: Record<string, { type: 'heal' | 'buff'; buffType?: 'atk' | 'def' | 'mag'; percent: number }> = {
-  potion:     { type: 'heal', percent: 25 },
-  panacea:    { type: 'heal', percent: 50 },
-  stimulant:  { type: 'buff', buffType: 'atk', percent: 10 },
-  bubble_med: { type: 'buff', buffType: 'def', percent: 10 },
-  magic_med:  { type: 'buff', buffType: 'mag', percent: 10 },
-}
+const ENEMY_EXP: Record<EnemyTypeKey, (d: number) => number> = Object.fromEntries(
+  Object.entries(ENEMY_EXP_BASE).map(([k, v]) => [k, (d: number) => v * d])
+) as Record<EnemyTypeKey, (d: number) => number>
 
 const TENDENCY_LABEL: Record<string, string> = {
   standard: '標準', attack: '攻撃型', magic: '魔法型', defense: '防御型', speed: '速度型',
@@ -60,8 +71,8 @@ function calcDmg(atk: number, def: number) {
 }
 function attrMult(atkAttr: Attribute, defAttr: Attribute): number {
   if (!atkAttr || !defAttr) return 1
-  if (ATTR_ADVANTAGE[atkAttr] === defAttr) return 1.5
-  if (ATTR_ADVANTAGE[defAttr] === atkAttr) return 0.75
+  if (ATTR_ADVANTAGE[atkAttr] === defAttr) return ATTR_ADVANTAGE_MULT
+  if (ATTR_ADVANTAGE[defAttr] === atkAttr) return ATTR_DISADVANTAGE_MULT
   return 1
 }
 function dungeonAttr(dl: number): Attribute {
@@ -69,9 +80,9 @@ function dungeonAttr(dl: number): Attribute {
 }
 function randomEnemyType(): EnemyTypeKey {
   const r = Math.random()
-  if (r < 0.40) return 'standard'
-  if (r < 0.65) return 'attack'
-  if (r < 0.90) return 'magic'
+  if (r < ENEMY_TYPE_THRESHOLD_STANDARD) return 'standard'
+  if (r < ENEMY_TYPE_THRESHOLD_ATTACK)   return 'attack'
+  if (r < ENEMY_TYPE_THRESHOLD_MAGIC)    return 'magic'
   return 'defense'
 }
 function makeEnemy(type: EnemyTypeKey, dl: number, attr: Attribute): EnemyInstance {
@@ -82,14 +93,16 @@ function makeEnemies(stageType: StageType, dl: number): EnemyInstance[] {
   const attr = dungeonAttr(dl)
   if (stageType === 'boss')  return [makeEnemy('boss',  dl, attr)]
   if (stageType === 'elite') return [makeEnemy('elite', dl, attr)]
-  const count = dl <= 15 ? (Math.random() < 0.5 ? 1 : 2) : (Math.random() < 0.5 ? 2 : 3)
+  const count = dl <= ENEMY_COUNT_DL_THRESHOLD
+    ? ENEMY_COUNT_LOW_MIN  + Math.floor(Math.random() * (ENEMY_COUNT_LOW_MAX  - ENEMY_COUNT_LOW_MIN  + 1))
+    : ENEMY_COUNT_HIGH_MIN + Math.floor(Math.random() * (ENEMY_COUNT_HIGH_MAX - ENEMY_COUNT_HIGH_MIN + 1))
   return Array.from({ length: count }, () => makeEnemy(randomEnemyType(), dl, null))
 }
 function buildTurnOrder(partyIds: string[], chars: CharacterInstance[], enemies: EnemyInstance[]) {
   const all: { id: string; spd: number; isPlayer: boolean }[] = [
     ...partyIds.map((id) => {
       const c = chars.find((x) => x.id === id)!
-      return { id, spd: c.stats.spd, isPlayer: true }
+      return { id, spd: c.stats.spd * c.battleLevel, isPlayer: true }
     }),
     ...enemies.map((e) => ({ id: e.id, spd: e.stats.spd, isPlayer: false })),
   ]
@@ -117,13 +130,13 @@ function charArmorAttr(char: CharacterInstance): Attribute {
   if (!inst) return null
   return getEquipment(inst.masterId)?.attribute ?? null
 }
-function generateStageTypes(): StageType[] {
+function generateStageTypes(dl: number): StageType[] {
   return [
     'battle',
-    Math.random() < 0.6 ? 'battle' : 'chest',
-    'battle',
-    (() => { const r = Math.random(); return r < 0.5 ? 'recovery' : r < 0.8 ? 'chest' : 'battle' })(),
-    Math.random() < 0.15 ? 'elite' : 'battle',
+    Math.random() < STAGE2_BATTLE_CHANCE ? 'battle' : 'chest',
+    dl >= 41 ? 'elite' : 'battle',
+    (() => { const r = Math.random(); return r < STAGE4_RECOVERY_THRESHOLD ? 'recovery' : r < STAGE4_CHEST_THRESHOLD ? 'chest' : 'battle' })(),
+    Math.random() < STAGE5_ELITE_CHANCE ? 'elite' : 'battle',
     'boss',
   ]
 }
@@ -134,9 +147,11 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
   const dl = parseInt(lvStr, 10)
   const router = useRouter()
 
-  const addGold         = useGameStore((s) => s.addGold)
+  const addGold          = useGameStore((s) => s.addGold)
   const upgradeGuildRank = useGameStore((s) => s.upgradeGuildRank)
-  const guildRank       = useGameStore((s) => s.guildRank)
+  const unlockRegion     = useGameStore((s) => s.unlockRegion)
+  const guildRank        = useGameStore((s) => s.guildRank)
+  const unlockedRegions  = useGameStore((s) => s.unlockedRegions)
   const characters      = useCharacterStore((s) => s.characters)
   const gainBattleExp   = useCharacterStore((s) => s.gainBattleExp)
   const updateCurrentHp = useCharacterStore((s) => s.updateCurrentHp)
@@ -154,6 +169,9 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
   const [action, setAction] = useState<'menu' | 'attack' | 'magic' | 'item' | 'item-target'>('menu')
   const [selectedItem, setSelectedItem] = useState('')
   const [result, setResult] = useState<'clear' | 'wipe' | 'retreat' | null>(null)
+  const [grUpgraded, setGrUpgraded] = useState(false)
+  const [regionPicked, setRegionPicked] = useState(false)
+  const [pendingBranch, setPendingBranch] = useState<{ stage: number; options: [StageType, StageType] } | null>(null)
 
   function getEquipName(instanceId: string | null): string | null {
     if (!instanceId) return null
@@ -162,9 +180,16 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
   }
 
   function effectiveStats(char: CharacterInstance) {
-    const base = char.stats
-    // Character star rank: each ★ above 1 gives +20% to all stats
-    const charStarBonus = (char.starRank - 1) * 0.2
+    const bl = char.battleLevel
+    const base = {
+      hp:   char.stats.hp   * bl,
+      atk:  char.stats.atk  * bl,
+      def:  char.stats.def  * bl,
+      mag:  char.stats.mag  * bl,
+      mdef: char.stats.mdef * bl,
+      spd:  char.stats.spd  * bl,
+    }
+    const charStarBonus = (char.starRank - 1) * COMBAT_STAR_BONUS_PER_RANK
     let atkMult = 1 + charStarBonus, defMult = 1 + charStarBonus
     let magMult = 1 + charStarBonus, mdefMult = 1 + charStarBonus
     let hpMult  = 1 + charStarBonus, spdMult  = 1 + charStarBonus
@@ -172,14 +197,19 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
       const inst = invEquipment.find((e) => e.instanceId === char.equipment[slot])
       const master = inst ? getEquipment(inst.masterId) : null
       if (!master || !inst) continue
-      // Equipment star rank: each ★ multiplies the base effect by that rank
       const s = inst.starRank
-      atkMult  += (master.effects.atkPercent  ?? 0) / 100 * s
-      defMult  += (master.effects.defPercent  ?? 0) / 100 * s
-      magMult  += (master.effects.magPercent  ?? 0) / 100 * s
-      mdefMult += (master.effects.mdefPercent ?? 0) / 100 * s
-      hpMult   += (master.effects.hpPercent   ?? 0) / 100 * s
-      spdMult  += (master.effects.spdPercent  ?? 0) / 100 * s
+      const scale = (base: number) => {
+        if (base === 0) return 0
+        return slot === 'accessory'
+          ? (base + EQUIP_ACCESSORY_STAR_BONUS    * (s - 1)) / 100
+          : (base + EQUIP_WEAPON_ARMOR_STAR_BONUS * (s - 1)) / 100
+      }
+      atkMult  += scale(master.effects.atkPercent  ?? 0)
+      defMult  += scale(master.effects.defPercent  ?? 0)
+      magMult  += scale(master.effects.magPercent  ?? 0)
+      mdefMult += scale(master.effects.mdefPercent ?? 0)
+      hpMult   += scale(master.effects.hpPercent   ?? 0)
+      spdMult  += scale(master.effects.spdPercent  ?? 0)
     }
     return {
       hp:   Math.floor(base.hp   * hpMult),
@@ -215,7 +245,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
 
   function startDungeon() {
     if (partyIds.length === 0) return
-    const stageTypes = generateStageTypes()
+    const stageTypes = generateStageTypes(dl)
 
     // Snapshot item inventory
     const inv = useInventoryStore.getState()
@@ -241,7 +271,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
       partyIds,
       partyHps,
       partyBuffs: {},
-      loot: { gold: 0, materials: {}, exp: 0 },
+      loot: { gold: 0, materials: {}, equipmentMasterIds: [], exp: 0 },
       turnOrder: enemies.length > 0 ? buildTurnOrder(partyIds, characters, enemies) : [],
       currentTurnIndex: 0,
       battlePhase: enemies.length > 0 ? 'player-action' : 'result',
@@ -273,20 +303,32 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     if (nextType === 'recovery') {
       for (const id of state.partyIds) {
         const c = characters.find((x) => x.id === id)!
-        const maxHp = effectiveStats(c).hp
-        const heal = Math.floor(maxHp * 0.5)
+        const maxHp = c.stats.hp * c.battleLevel
+        const heal = Math.floor(maxHp * RECOVERY_HEAL_PERCENT)
         newHps[id] = Math.min(maxHp, (newHps[id] ?? maxHp) + heal)
         newLog.push(`💚 ${getCharacterMaster(c.masterId)?.name} HP +${heal}`)
       }
     } else if (nextType === 'chest') {
-      const gold = 100 * dl
+      const gold = CHEST_GOLD_FACTOR * dl
       newLoot.gold += gold
+      const r = Math.random()
       const mats = getDungeonMaterials(dl)
-      if (mats.length > 0) {
-        const mat = mats[Math.floor(Math.random() * mats.length)]
-        const qty = 5 + Math.floor(Math.random() * 6)
-        newLoot.materials[mat.id] = (newLoot.materials[mat.id] ?? 0) + qty
-        newLog.push(`📦 宝箱: ${gold}G・${mat.name}×${qty}`)
+      if (r < CHEST_MATERIAL_THRESHOLD) {
+        if (mats.length > 0) {
+          const mat = mats[Math.floor(Math.random() * mats.length)]
+          const qty = CHEST_MAT_MIN + Math.floor(Math.random() * CHEST_MAT_RANGE)
+          newLoot.materials[mat.id] = (newLoot.materials[mat.id] ?? 0) + qty
+          newLog.push(`📦 宝箱: ${gold}G・${mat.name}×${qty}`)
+        } else {
+          newLog.push(`📦 宝箱: ${gold}G`)
+        }
+      } else if (r < CHEST_POTION_THRESHOLD) {
+        newLoot.materials['potion'] = (newLoot.materials['potion'] ?? 0) + 1
+        newLog.push(`📦 宝箱: ${gold}G・回復ポーション×1`)
+      } else if (r < CHEST_EQUIP_THRESHOLD) {
+        const picked = EQUIPMENT_MASTERS[Math.floor(Math.random() * EQUIPMENT_MASTERS.length)]
+        newLoot.equipmentMasterIds = [...newLoot.equipmentMasterIds, picked.id]
+        newLog.push(`📦 宝箱: ${gold}G・${picked.name}`)
       } else {
         newLog.push(`📦 宝箱: ${gold}G`)
       }
@@ -316,10 +358,13 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     for (const [matId, qty] of Object.entries(state.loot.materials)) {
       inv.addMaterial(matId, qty)
     }
+    for (const eqMasterId of state.loot.equipmentMasterIds) {
+      inv.addEquipment(eqMasterId)
+    }
     for (const id of state.partyIds) gainBattleExp(id, state.loot.exp)
     for (const id of state.partyIds) {
       const c = characters.find((x) => x.id === id)!
-      updateCurrentHp(id, c.stats.hp)
+      updateCurrentHp(id, c.stats.hp * c.battleLevel)
     }
     clearDungeon(dl)
     // Recruit points: 1 per party member's region
@@ -328,7 +373,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
       const master = getCharacterMaster(c.masterId)
       if (master) addRecruitPoints(master.region, 1)
     }
-    if (dl % 10 === 0 && dl / 10 === guildRank) upgradeGuildRank()
+    if (dl % 10 === 0 && dl / 10 === guildRank) setGrUpgraded(upgradeGuildRank())
     setActiveBattle(null)
     setResult('clear')
     return state
@@ -366,7 +411,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     if (aliveParty.length === 0) {
       for (const id of state.partyIds) {
         const c = characters.find((x) => x.id === id)
-        if (c) updateCurrentHp(id, c.stats.hp)
+        if (c) updateCurrentHp(id, c.stats.hp * c.battleLevel)
       }
       setActiveBattle(null)
       setResult('wipe')
@@ -382,6 +427,22 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
       targetId = aliveParty.reduce((a, b) =>
         (state.partyHps[a] ?? 0) < (state.partyHps[b] ?? 0) ? a : b
       )
+    } else if (enemy.type === 'elite' || enemy.type === 'boss') {
+      // Weighted by 1/defStat: lower defense = higher probability of being targeted
+      const weights = aliveParty.map((id) => {
+        const c = characters.find((x) => x.id === id)!
+        const eff = effectiveStats(c)
+        const stat = usesMag ? eff.mdef : eff.def
+        return 1 / Math.max(1, stat)
+      })
+      const total = weights.reduce((s, w) => s + w, 0)
+      let r = Math.random() * total
+      let ti = aliveParty.length - 1
+      for (let i = 0; i < weights.length; i++) {
+        r -= weights[i]
+        if (r <= 0) { ti = i; break }
+      }
+      targetId = aliveParty[ti]
     } else {
       targetId = aliveParty[Math.floor(Math.random() * aliveParty.length)]
     }
@@ -419,7 +480,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     if (Object.values(newHps).every((hp) => hp <= 0)) {
       for (const id of state.partyIds) {
         const c = characters.find((x) => x.id === id)
-        if (c) updateCurrentHp(id, c.stats.hp)
+        if (c) updateCurrentHp(id, c.stats.hp * c.battleLevel)
       }
       setActiveBattle(null)
       setResult('wipe')
@@ -466,18 +527,36 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     const allDead = newEnemies.every((e) => e.hp <= 0)
     if (allDead) {
       const expGain  = bs.enemies.reduce((s, e) => s + ENEMY_EXP[e.type as EnemyTypeKey](dl), 0)
-      const goldGain = bs.stageType === 'boss' ? 500*dl : bs.stageType === 'elite' ? 300*dl : 50*dl
+      const goldGain = bs.stageType === 'boss'
+        ? BATTLE_GOLD_BOSS_FACTOR   * dl
+        : bs.stageType === 'elite'
+        ? BATTLE_GOLD_ELITE_FACTOR  * dl
+        : BATTLE_GOLD_NORMAL_FACTOR * dl
       const mats     = getDungeonMaterials(dl)
       const mat      = mats.length > 0 ? mats[Math.floor(Math.random() * mats.length)] : null
-      const matQty   = mat ? 5 + Math.floor(Math.random() * 6) : 0
+      const isEliteOrBoss = bs.stageType === 'elite' || bs.stageType === 'boss'
+      const matQty   = mat
+        ? (isEliteOrBoss
+          ? BATTLE_MAT_ELITE_MIN  + Math.floor(Math.random() * BATTLE_MAT_ELITE_RANGE)
+          : BATTLE_MAT_NORMAL_MIN + Math.floor(Math.random() * BATTLE_MAT_NORMAL_RANGE))
+        : 0
+      let newEquipIds = [...bs.loot.equipmentMasterIds]
+      let winMsg = `✨ 勝利！ +${goldGain}G`
+      if (mat && matQty > 0) winMsg += `・${mat.name}×${matQty}`
+      if (bs.stageType === 'elite') {
+        const picked = EQUIPMENT_MASTERS[Math.floor(Math.random() * EQUIPMENT_MASTERS.length)]
+        newEquipIds = [...newEquipIds, picked.id]
+        winMsg += `・${picked.name}`
+      }
       const newLoot = {
         gold: bs.loot.gold + goldGain,
         exp:  bs.loot.exp  + expGain,
+        equipmentMasterIds: newEquipIds,
         materials: mat
           ? { ...bs.loot.materials, [mat.id]: (bs.loot.materials[mat.id] ?? 0) + matQty }
           : { ...bs.loot.materials },
       }
-      const winLog = [...newLog, `✨ 勝利！ +${goldGain}G${mat ? `・${mat.name}×${matQty}` : ''}`]
+      const winLog = [...newLog, winMsg]
       setBs({ ...bs, enemies: newEnemies, partyBuffs: newBuffs, loot: newLoot, battlePhase: 'result', log: winLog })
     } else {
       const mid = { ...bs, enemies: newEnemies, partyBuffs: newBuffs, log: newLog }
@@ -504,22 +583,23 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     const newLog = [...bs.log]
 
     if (eff.type === 'heal') {
-      const maxHp = effectiveStats(target).hp
+      const maxHp = target.stats.hp * target.battleLevel
       const heal = Math.floor(maxHp * eff.percent / 100)
       newHps[targetCharId] = Math.min(maxHp, (newHps[targetCharId] ?? maxHp) + heal)
       const tname = getCharacterMaster(target.masterId)?.name ?? targetCharId
       newLog.push(`🧪 ${aname} → ${tname} HP +${heal}回復`)
     } else if (eff.type === 'buff' && eff.buffType) {
-      const buff: Buff = { type: eff.buffType, percent: eff.percent, turnsRemaining: 3 }
+      const buff: Buff = { type: eff.buffType, percent: eff.percent, turnsRemaining: BUFF_DURATION_TURNS }
       newBuffs[targetCharId] = [
         ...(newBuffs[targetCharId] ?? []).filter((b) => b.type !== eff.buffType),
         buff,
       ]
       const tname = getCharacterMaster(target.masterId)?.name ?? targetCharId
-      newLog.push(`🧪 ${aname} → ${tname} ${eff.buffType}+${eff.percent}%（3ターン）`)
+      newLog.push(`🧪 ${aname} → ${tname} ${eff.buffType}+${eff.percent}%（${BUFF_DURATION_TURNS}ターン）`)
     }
 
     setDungeonItems((prev) => ({ ...prev, [selectedItem]: (prev[selectedItem] ?? 0) - 1 }))
+    useInventoryStore.getState().removeMaterial(selectedItem, 1)
     setSelectedItem('')
 
     const mid = { ...bs, partyHps: newHps, partyBuffs: newBuffs, log: newLog }
@@ -529,24 +609,26 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
 
   function handleRetreat() {
     if (!bs) return
-    const gold = Math.floor(bs.loot.gold * 0.8)
+    const gold = Math.floor(bs.loot.gold * RETREAT_REWARD_RATE)
     addGold(gold)
     const inv = useInventoryStore.getState()
     for (const [matId, qty] of Object.entries(bs.loot.materials)) {
-      inv.addMaterial(matId, Math.floor(qty * 0.8))
+      inv.addMaterial(matId, Math.floor(qty * RETREAT_REWARD_RATE))
     }
-    for (const id of bs.partyIds) gainBattleExp(id, Math.floor(bs.loot.exp * 0.8))
+    for (const eqMasterId of bs.loot.equipmentMasterIds) {
+      inv.addEquipment(eqMasterId)
+    }
+    for (const id of bs.partyIds) gainBattleExp(id, Math.floor(bs.loot.exp * RETREAT_REWARD_RATE))
     for (const id of bs.partyIds) {
       const c = characters.find((x) => x.id === id)
-      if (c) updateCurrentHp(id, c.stats.hp)
+      if (c) updateCurrentHp(id, c.stats.hp * c.battleLevel)
     }
     setActiveBattle(null)
     setResult('retreat')
   }
 
-  function handleNextStage() {
-    if (!bs) return
-    const next = advanceStage(bs)
+  function proceedToStage(bsState: BattleState) {
+    const next = advanceStage(bsState)
     if (next.battlePhase === 'player-action') {
       const slot = next.turnOrder[next.currentTurnIndex]
       if (slot && !slot.isPlayer) {
@@ -558,6 +640,32 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
       }
     }
     setBs(next)
+  }
+
+  function handleNextStage() {
+    if (!bs) return
+    const nextStage = bs.currentStage + 1
+    if (nextStage >= 6) return
+
+    if (Math.random() < DUNGEON_BRANCH_CHANCE) {
+      const baseType = bs.stageTypes[nextStage]
+      const options: [StageType, StageType] =
+        baseType === 'recovery' || baseType === 'chest'
+          ? ['recovery', 'chest']
+          : ['battle', 'elite']
+      setPendingBranch({ stage: nextStage, options })
+      return
+    }
+
+    proceedToStage(bs)
+  }
+
+  function selectBranch(type: StageType) {
+    if (!bs || !pendingBranch) return
+    const newStageTypes = [...bs.stageTypes]
+    newStageTypes[pendingBranch.stage] = type
+    setPendingBranch(null)
+    proceedToStage({ ...bs, stageTypes: newStageTypes })
   }
 
   // ─── Render: party select ─────────────────────────────────────────────
@@ -591,7 +699,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                   </span>
                 </div>
                 <div className="text-xs text-slate-400">
-                  HP: {char.currentHp}/{char.stats.hp}
+                  HP: {char.currentHp}/{char.stats.hp * char.battleLevel}
                 </div>
                 {(weaponName || armorName) && (
                   <div className="text-xs text-slate-500 mt-0.5 truncate">
@@ -635,32 +743,104 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             <div className="flex justify-between">
               <span className="text-slate-300">ゴールド</span>
               <span className="text-yellow-300 font-bold">
-                {result === 'retreat' ? Math.floor(loot.gold * 0.8) : loot.gold}G
+                {result === 'retreat' ? Math.floor(loot.gold * RETREAT_REWARD_RATE) : loot.gold}G
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-300">経験値</span>
               <span className="text-blue-300 font-bold">
-                {result === 'retreat' ? Math.floor(loot.exp * 0.8) : loot.exp}
+                {result === 'retreat' ? Math.floor(loot.exp * RETREAT_REWARD_RATE) : loot.exp}
               </span>
             </div>
             {Object.entries(loot.materials).map(([matId, qty]) => {
-              const mats = getDungeonMaterials(dl)
-              const m = mats.find((x) => x.id === matId)
-              const actual = result === 'retreat' ? Math.floor(qty * 0.8) : qty
+              const m = getDungeonMaterials(dl).find((x) => x.id === matId)
+                ?? getMaterial(matId)
+                ?? { name: getRecipe(matId)?.name ?? matId }
+              const actual = result === 'retreat' ? Math.floor(qty * RETREAT_REWARD_RATE) : qty
               return (
                 <div key={matId} className="flex justify-between">
-                  <span className="text-slate-300">{m?.name ?? matId}</span>
+                  <span className="text-slate-300">{m.name}</span>
                   <span className="text-green-300">×{actual}</span>
                 </div>
               )
             })}
+            {loot.equipmentMasterIds.map((eqId, i) => {
+              const eq = getEquipment(eqId)
+              return (
+                <div key={i} className="flex justify-between">
+                  <span className="text-slate-300">{eq?.name ?? eqId}</span>
+                  <span className="text-yellow-300">★1 入手</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {result === 'clear' && dl % 10 === 0 && (
+          <div className="mb-4">
+            {!grUpgraded && (
+              <div className="rounded-xl p-3 text-sm font-semibold bg-slate-800 border border-slate-600 text-slate-400">
+                ⚠️ GRアップには魔力結晶×{guildRank * GR_UPGRADE_MAT_COST} / 古代歯車×{guildRank * GR_UPGRADE_MAT_COST} が必要です
+              </div>
+            )}
+            {grUpgraded && (() => {
+              const lockable = REGIONS.filter((r) => !unlockedRegions.includes(r.id))
+              if (lockable.length === 0 || regionPicked) {
+                return (
+                  <div className="rounded-xl p-3 text-sm font-semibold bg-yellow-900 border border-yellow-500 text-yellow-200">
+                    🏆 ギルドランクが {guildRank} に上昇しました！
+                  </div>
+                )
+              }
+              return (
+                <div className="bg-yellow-900 border border-yellow-500 rounded-xl p-3 space-y-2">
+                  <div className="text-sm font-semibold text-yellow-200">🏆 GR{guildRank} に上昇！解放する地域を1つ選んでください</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {lockable.map((r) => (
+                      <button key={r.id}
+                        onClick={() => { unlockRegion(r.id); setRegionPicked(true) }}
+                        className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2 rounded text-sm transition-colors">
+                        {r.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )}
         <button onClick={() => router.push('/dungeon')}
           className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl">
           ダンジョン一覧へ
         </button>
+      </div>
+    )
+  }
+
+  // ─── Render: branch selection ─────────────────────────────────────────
+  if (pendingBranch) {
+    const BRANCH_LABEL: Record<string, string> = {
+      battle: '通常戦闘', elite: '強敵', recovery: '回復', chest: '宝箱',
+    }
+    const BRANCH_ICON: Record<string, string> = {
+      battle: '⚔️', elite: '🟠', recovery: '💚', chest: '📦',
+    }
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-6 gap-6">
+        <div className="text-center">
+          <div className="text-xl font-bold text-yellow-300 mb-1">⚡ 分岐！</div>
+          <div className="text-sm text-slate-400">
+            ステージ{pendingBranch.stage + 1} — どちらに進みますか？
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
+          {pendingBranch.options.map((opt) => (
+            <button key={opt} onClick={() => selectBranch(opt)}
+              className="bg-slate-700 hover:bg-slate-600 border border-slate-500 hover:border-yellow-400 rounded-2xl p-6 text-center transition-colors">
+              <div className="text-3xl mb-2">{BRANCH_ICON[opt]}</div>
+              <div className="text-sm font-bold text-slate-200">{BRANCH_LABEL[opt]}</div>
+            </button>
+          ))}
+        </div>
       </div>
     )
   }
@@ -726,8 +906,9 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
               const char = characters.find((c) => c.id === charId)!
               if (!char) return null
               const master     = getCharacterMaster(char.masterId)
-              const hp         = bs.partyHps[charId] ?? char.stats.hp
-              const hpPct      = (hp / char.stats.hp) * 100
+              const maxHp      = char.stats.hp * char.battleLevel
+              const hp         = bs.partyHps[charId] ?? maxHp
+              const hpPct      = (hp / maxHp) * 100
               const isActing   = slot?.id === charId && bs.battlePhase === 'player-action'
               const buffs      = bs.partyBuffs[charId] ?? []
               const isItemTarget = action === 'item-target'
@@ -748,7 +929,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                         {TENDENCY_LABEL[char.tendency]}
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400 shrink-0 ml-1">{hp}/{char.stats.hp}</span>
+                    <span className="text-xs text-slate-400 shrink-0 ml-1">{hp}/{maxHp}</span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-700 rounded mb-1">
                     <div className={`h-full rounded transition-all ${hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-yellow-500' : 'bg-red-500'}`}

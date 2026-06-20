@@ -1,28 +1,27 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { CharacterAssignment, CharacterInstance, CharacterStats, EquipmentSlot, Tendency } from '@/types/game'
+import { useGameStore } from './gameStore'
+import {
+  CHAR_BASE_STATS, CHAR_STAT_VARIANCE,
+  EXP_PER_LEVEL,
+  AFFECTION_GAIN_MIN, AFFECTION_GAIN_RANGE, AFFECTION_POINTS_PER_LEVEL,
+  GR_BATTLE_LEVEL_CAP, GR_FACILITY_LEVEL_CAP,
+} from '@/data/constants'
 
 const TENDENCIES: Tendency[] = ['standard', 'attack', 'magic', 'defense', 'speed']
 
-const STAT_VARIANCE: Record<Tendency, Partial<CharacterStats>> = {
-  standard: { hp: 15, atk: 5, def: 5, mag: 5, mdef: 5, spd: 1 },
-  attack:   { hp: 15, atk: 15, def: 2, mag: 2, mdef: 2, spd: 1 },
-  magic:    { hp: 15, atk: 2, def: 2, mag: 15, mdef: 2, spd: 1 },
-  defense:  { hp: 20, atk: 2, def: 15, mag: 2, mdef: 15, spd: 1 },
-  speed:    { hp: 15, atk: 5, def: 5, mag: 5, mdef: 5, spd: 3 },
-}
-
 function rollStats(tendency: Tendency): CharacterStats {
-  const v = STAT_VARIANCE[tendency]
+  const v = CHAR_STAT_VARIANCE[tendency]
   const rand = (base: number, variance: number) =>
     base + Math.floor((Math.random() * 2 - 1) * variance)
   return {
-    hp:   rand(200, v.hp ?? 15),
-    atk:  rand(50,  v.atk ?? 5),
-    def:  rand(50,  v.def ?? 5),
-    mag:  rand(50,  v.mag ?? 5),
-    mdef: rand(50,  v.mdef ?? 5),
-    spd:  rand(10,  v.spd ?? 1),
+    hp:   rand(CHAR_BASE_STATS.hp,   v.hp   ?? 15),
+    atk:  rand(CHAR_BASE_STATS.atk,  v.atk  ?? 5),
+    def:  rand(CHAR_BASE_STATS.def,  v.def  ?? 5),
+    mag:  rand(CHAR_BASE_STATS.mag,  v.mag  ?? 5),
+    mdef: rand(CHAR_BASE_STATS.mdef, v.mdef ?? 5),
+    spd:  rand(CHAR_BASE_STATS.spd,  v.spd  ?? 1),
   }
 }
 
@@ -53,8 +52,8 @@ function updateChar(
 
 function expToLevel(exp: number): number {
   let level = 1
-  while (exp >= 100 * level) {
-    exp -= 100 * level
+  while (exp >= EXP_PER_LEVEL * level) {
+    exp -= EXP_PER_LEVEL * level
     level++
   }
   return level
@@ -114,9 +113,9 @@ export const useCharacterStore = create<CharacterState>()(
       socialize: (id) => {
         const char = get().characters.find((c) => c.id === id)
         if (!char || char.socializedThisCycle) return
-        const gain = 95 + Math.floor(Math.random() * 11)
+        const gain = AFFECTION_GAIN_MIN + Math.floor(Math.random() * AFFECTION_GAIN_RANGE)
         const newPoints = char.affectionPoints + gain
-        const pointsNeeded = char.affectionLevel * 100
+        const pointsNeeded = char.affectionLevel * AFFECTION_POINTS_PER_LEVEL
         const leveled = newPoints >= pointsNeeded
         set((s) => ({
           characters: updateChar(s.characters, id, {
@@ -136,9 +135,15 @@ export const useCharacterStore = create<CharacterState>()(
         set((s) => {
           const char = s.characters.find((c) => c.id === id)
           if (!char) return s
+          const maxLevel = useGameStore.getState().guildRank * GR_BATTLE_LEVEL_CAP
+          if (char.battleLevel >= maxLevel) return s
           const newExp = char.battleExp + exp
-          const newLevel = expToLevel(newExp)
-          return { characters: updateChar(s.characters, id, { battleExp: newExp, battleLevel: newLevel }) }
+          const newLevel = Math.min(expToLevel(newExp), maxLevel)
+          const update: Partial<CharacterInstance> = { battleExp: newExp, battleLevel: newLevel }
+          if (newLevel > char.battleLevel) {
+            update.currentHp = char.stats.hp * newLevel
+          }
+          return { characters: updateChar(s.characters, id, update) }
         }),
 
       gainProductionExp: (id, facility, exp) => {
@@ -147,8 +152,10 @@ export const useCharacterStore = create<CharacterState>()(
         set((s) => {
           const char = s.characters.find((c) => c.id === id)
           if (!char) return s
+          const maxLevel = useGameStore.getState().guildRank * GR_FACILITY_LEVEL_CAP
+          if ((char[levelKey] as number) >= maxLevel) return s
           const newExp = (char[expKey] as number) + exp
-          const newLevel = expToLevel(newExp)
+          const newLevel = Math.min(expToLevel(newExp), maxLevel)
           return {
             characters: updateChar(s.characters, id, {
               [expKey]: newExp,
@@ -180,13 +187,14 @@ export const useCharacterStore = create<CharacterState>()(
       upgradeStarRank: (id) =>
         set((s) => {
           const char = s.characters.find((c) => c.id === id)
-          if (!char || char.starRank >= 5) return s
-          const cost = char.starRank * 10
-          if (char.certificates < cost) return s
+          if (!char) return s
+          // Cost doubles each rank: ★1→★2: 1, ★2→★3: 2, ★3→★4: 4, ...
+          const certCost = Math.pow(2, char.starRank - 1)
+          if (char.certificates < certCost) return s
           return {
             characters: updateChar(s.characters, id, {
               starRank: char.starRank + 1,
-              certificates: char.certificates - cost,
+              certificates: char.certificates - certCost,
             }),
           }
         }),

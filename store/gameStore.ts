@@ -1,8 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-
-const CYCLE_DURATION_MS = 20 * 60 * 1000
-const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000
+import { useInventoryStore } from './inventoryStore'
+import {
+  CYCLE_DURATION_MS, OFFLINE_CAP_MS, HARVEST_BONUS_CHANCE,
+  GR_UPGRADE_MAT_COST, INITIAL_GOLD,
+} from '@/data/constants'
 
 interface GameState {
   gold: number
@@ -18,7 +20,7 @@ interface GameState {
   spendGold: (amount: number) => boolean
   advanceCycle: () => void
   unlockRegion: (regionId: string) => void
-  upgradeGuildRank: () => void
+  upgradeGuildRank: () => boolean
   setLastActiveTime: (time: number) => void
   completeSetup: (firstRegionId: string) => void
   getOfflineElapsed: () => number
@@ -27,7 +29,7 @@ interface GameState {
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      gold: 1000,
+      gold: INITIAL_GOLD,
       guildRank: 1,
       cycleCount: 1,
       cycleStartTime: Date.now(),
@@ -46,8 +48,7 @@ export const useGameStore = create<GameState>()(
 
       advanceCycle: () => {
         const bonuses: Record<string, number> = {}
-        // 5% chance to add +1% harvest bonus to a random material
-        if (Math.random() < 0.05) {
+        if (Math.random() < HARVEST_BONUS_CHANCE) {
           const materials = ['wheat', 'potato', 'tomato', 'apple', 'herb',
             'coal', 'iron', 'copper', 'silver', 'crystal',
             'seaweed', 'smallfish', 'mackerel', 'shrimp', 'tuna',
@@ -69,7 +70,17 @@ export const useGameStore = create<GameState>()(
             : [...s.unlockedRegions, regionId],
         })),
 
-      upgradeGuildRank: () => set((s) => ({ guildRank: s.guildRank + 1 })),
+      upgradeGuildRank: () => {
+        const { guildRank } = get()
+        const cost = guildRank * GR_UPGRADE_MAT_COST
+        const inv = useInventoryStore.getState()
+        if ((inv.materials['magiccrystal'] ?? 0) < cost) return false
+        if ((inv.materials['ancientgear'] ?? 0) < cost) return false
+        inv.removeMaterial('magiccrystal', cost)
+        inv.removeMaterial('ancientgear', cost)
+        set((s) => ({ guildRank: s.guildRank + 1 }))
+        return true
+      },
 
       setLastActiveTime: (time) => set({ lastActiveTime: time }),
 
