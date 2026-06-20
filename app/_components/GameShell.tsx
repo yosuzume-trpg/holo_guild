@@ -79,6 +79,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
     const { characters } = useCharacterStore.getState()
     const { addMaterial } = useInventoryStore.getState()
     const { harvestBonuses } = useGameStore.getState()
+    const { getResearchBonus } = useFacilityStore.getState()
     const frac = fracRef.current
 
     for (const char of characters) {
@@ -131,17 +132,21 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       const charLevelBonus = ((char[facilityLevelKey] as number) - 1) * PROD_CHAR_LEVEL_BONUS
       const starBonus = (char.starRank - 1) * PROD_STAR_BONUS_PER_RANK
       const harvestBonus = (harvestBonuses[mat.id] ?? 0) / 100
-      const rate = mat.ratePerMin * (1 + toolBonus + harvestBonus + starBonus + charLevelBonus)
+      // 施設の研究ボーナス(+1%/Lv)も生産量に加算（キャラ生産レベルと加算スタック）
+      const researchBonus = getResearchBonus(asgn.type)
+      const rate = mat.ratePerMin * (1 + toolBonus + harvestBonus + starBonus + charLevelBonus + researchBonus)
       const key = `${char.id}:${mat.id}`
       frac[key] = (frac[key] ?? 0) + rate * elapsedMin
+
+      // 経験値は整数個ドロップの有無に関わらず毎tick加算（取りこぼし防止）
+      useCharacterStore
+        .getState()
+        .gainProductionExp(char.id, asgn.type, mat.price * rate * elapsedMin)
 
       const whole = Math.floor(frac[key])
       if (whole >= 1) {
         addMaterial(mat.id, whole)
         frac[key] -= whole
-        useCharacterStore
-          .getState()
-          .gainProductionExp(char.id, asgn.type, mat.price * rate * elapsedMin)
       }
     }
   }

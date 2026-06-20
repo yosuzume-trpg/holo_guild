@@ -71,20 +71,3 @@ export const ACC_TOOL_POOL = EQUIPMENT_MASTERS.filter((e) => e.slot === 'accesso
 export function getEquipment(id: string): EquipmentMaster | undefined {
   return EQUIPMENT_MASTERS.find((e) => e.id === id)
 }
-
-/** Returns combined stat multipliers for equipped items (starRank considered) */
-export function calcEquipEffects(
-  equippedIds: Array<{ masterId: string; starRank: number } | null>
-): EquipmentEffects {
-  const result: EquipmentEffects = {}
-  for (const item of equippedIds) {
-    if (!item) continue
-    const master = getEquipment(item.masterId)
-    if (!master) continue
-    const rankBonus = (item.starRank - 1) * 0.25
-    for (const [key, base] of Object.entries(master.effects) as [keyof EquipmentEffects, number][]) {
-      result[key] = (result[key] ?? 0) + base + (base > 1 ? base * rankBonus : 0)
-    }
-  }
-  return result
-}

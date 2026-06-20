@@ -15,10 +15,12 @@ interface GameState {
   unlockedRegions: string[]
   isSetupComplete: boolean
   harvestBonuses: Record<string, number>
+  socializedThisCycle: boolean
 
   addGold: (amount: number) => void
   spendGold: (amount: number) => boolean
   advanceCycle: () => void
+  markSocialized: () => void
   unlockRegion: (regionId: string) => void
   upgradeGuildRank: () => boolean
   setLastActiveTime: (time: number) => void
@@ -37,6 +39,7 @@ export const useGameStore = create<GameState>()(
       unlockedRegions: [],
       isSetupComplete: false,
       harvestBonuses: {},
+      socializedThisCycle: false,
 
       addGold: (amount) => set((s) => ({ gold: s.gold + amount })),
 
@@ -59,9 +62,13 @@ export const useGameStore = create<GameState>()(
         set((s) => ({
           cycleCount: s.cycleCount + 1,
           cycleStartTime: Date.now(),
-          harvestBonuses: { ...s.harvestBonuses, ...bonuses },
+          // 豊作ボーナスはそのサイクルのみ有効（毎サイクル置き換え）
+          harvestBonuses: bonuses,
+          socializedThisCycle: false,
         }))
       },
+
+      markSocialized: () => set({ socializedThisCycle: true }),
 
       unlockRegion: (regionId) =>
         set((s) => ({

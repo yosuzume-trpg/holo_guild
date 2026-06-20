@@ -37,8 +37,8 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'magicstone',    name: '魔石',     price: 5,  ratePerMin: 0.5,  facility: 'dungeon', dungeonMinLevel: 1 },
   { id: 'monstertooth',  name: '魔物の牙', price: 10, ratePerMin: 0.25, facility: 'dungeon', dungeonMinLevel: 1 },
   { id: 'monsterhide',   name: '魔物の皮', price: 10, ratePerMin: 0.25, facility: 'dungeon', dungeonMinLevel: 1 },
-  { id: 'magiccrystal',  name: '魔力結晶', price: 25, ratePerMin: 0.1,  facility: 'dungeon', dungeonMinLevel: 11 },
-  { id: 'ancientgear',   name: '古代歯車', price: 25, ratePerMin: 0.1,  facility: 'dungeon', dungeonMinLevel: 11 },
+  { id: 'magiccrystal',  name: '魔力結晶', price: 25, ratePerMin: 0.1,  facility: 'dungeon', dungeonMinLevel: 1 },
+  { id: 'ancientgear',   name: '古代歯車', price: 25, ratePerMin: 0.1,  facility: 'dungeon', dungeonMinLevel: 1 },
 ]
 
 export const MATERIALS_BY_FACILITY = {

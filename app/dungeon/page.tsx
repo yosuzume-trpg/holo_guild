@@ -17,8 +17,9 @@ export default function DungeonPage() {
 
   const [tab, setTab] = useState<'challenge' | 'auto'>('challenge')
 
-  // Levels unlocked: 1 always, then next after each clear
-  const unlockedMax = maxCleared + 1
+  // Levels unlocked: 1 always, then next after each clear.
+  // 挑戦できるDLは GR×10 まで（GR1なら最大DL10）。
+  const unlockedMax = Math.min(maxCleared + 1, guildRank * 10)
   const challengeLevels = Array.from({ length: unlockedMax }, (_, i) => i + 1)
 
   // Auto-grind: characters assigned to dungeon
@@ -143,6 +144,11 @@ function AutoAssignButton({
   const [level, setLevel] = useState(maxCleared)
   const [matId, setMatId] = useState(availableMats[0]?.id ?? '')
 
+  // 収集できる素材は配置するDLのDL帯に従う
+  const levelMats = getDungeonMaterials(level)
+  // 選択中の素材が現在のDL帯に無ければ先頭へ補正
+  const effectiveMatId = levelMats.some((m) => m.id === matId) ? matId : (levelMats[0]?.id ?? '')
+
   return (
     <>
       <button onClick={() => setOpen(true)}
@@ -174,16 +180,16 @@ function AutoAssignButton({
             </div>
             <div>
               <div className="text-xs text-slate-400 mb-1">収集する素材</div>
-              <select value={matId} onChange={(e) => setMatId(e.target.value)}
+              <select value={effectiveMatId} onChange={(e) => setMatId(e.target.value)}
                 className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200">
-                {availableMats.map((m) => (
+                {levelMats.map((m) => (
                   <option key={m.id} value={m.id}>{m.name} ({m.ratePerMin}/分)</option>
                 ))}
               </select>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setOpen(false)} className="flex-1 bg-slate-700 text-slate-300 py-2 rounded text-sm">キャンセル</button>
-              <button onClick={() => { onAssign(charId, level, matId); setOpen(false) }}
+              <button onClick={() => { if (effectiveMatId) { onAssign(charId, level, effectiveMatId); setOpen(false) } }}
                 className="flex-1 bg-yellow-500 text-slate-900 font-bold py-2 rounded text-sm">配置</button>
             </div>
           </div>

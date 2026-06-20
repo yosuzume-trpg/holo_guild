@@ -48,6 +48,7 @@ export default function CharacterDetailPage({
   const upgradeStarRank  = useCharacterStore((s) => s.upgradeStarRank)
   const gold             = useGameStore((s) => s.gold)
   const spendGold        = useGameStore((s) => s.spendGold)
+  const socializedThisCycle = useGameStore((s) => s.socializedThisCycle)
   const equipment        = useInventoryStore((s) => s.equipment)
 
   const [equipModal, setEquipModal] = useState<EquipmentSlot | null>(null)
@@ -317,10 +318,14 @@ export default function CharacterDetailPage({
         </div>
         <button
           onClick={() => socialize(char.id)}
-          disabled={char.socializedThisCycle}
+          disabled={socializedThisCycle}
           className="w-full bg-pink-700 hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-2 rounded-lg transition-colors"
         >
-          {char.socializedThisCycle ? '今日は交遊済み' : `交遊する (+${AFFECTION_GAIN_MIN}〜${AFFECTION_GAIN_MIN + AFFECTION_GAIN_RANGE - 1} pt)`}
+          {char.socializedThisCycle
+            ? 'このサイクルは交遊済み'
+            : socializedThisCycle
+            ? '今サイクルは別のキャラと交遊済み'
+            : `交遊する (+${AFFECTION_GAIN_MIN}〜${AFFECTION_GAIN_MIN + AFFECTION_GAIN_RANGE - 1} pt)`}
         </button>
       </div>
     </div>

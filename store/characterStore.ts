@@ -113,6 +113,8 @@ export const useCharacterStore = create<CharacterState>()(
       socialize: (id) => {
         const char = get().characters.find((c) => c.id === id)
         if (!char || char.socializedThisCycle) return
+        // 交遊はギルド全体で1サイクル1回まで
+        if (useGameStore.getState().socializedThisCycle) return
         const gain = AFFECTION_GAIN_MIN + Math.floor(Math.random() * AFFECTION_GAIN_RANGE)
         const newPoints = char.affectionPoints + gain
         const pointsNeeded = char.affectionLevel * AFFECTION_POINTS_PER_LEVEL
@@ -124,6 +126,7 @@ export const useCharacterStore = create<CharacterState>()(
             affectionLevel: leveled ? char.affectionLevel + 1 : char.affectionLevel,
           }),
         }))
+        useGameStore.getState().markSocialized()
       },
 
       resetSocialFlag: () =>

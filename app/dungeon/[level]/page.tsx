@@ -13,7 +13,7 @@ import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
 import type { StoredBattle } from '@/store/dungeonStore'
 import {
-  ATTR_ADVANTAGE, DUNGEON_ATTR,
+  ATTR_ADVANTAGE, DUNGEON_ATTR, ENEMY_NEUTRAL_CHANCE,
   ATTR_ADVANTAGE_MULT, ATTR_DISADVANTAGE_MULT,
   ENEMY_BASE_STATS, ENEMY_EXP_BASE, ITEM_EFFECTS,
   COMBAT_STAR_BONUS_PER_RANK, EQUIP_WEAPON_ARMOR_STAR_BONUS, EQUIP_ACCESSORY_STAR_BONUS,
@@ -96,7 +96,10 @@ function makeEnemies(stageType: StageType, dl: number): EnemyInstance[] {
   const count = dl <= ENEMY_COUNT_DL_THRESHOLD
     ? ENEMY_COUNT_LOW_MIN  + Math.floor(Math.random() * (ENEMY_COUNT_LOW_MAX  - ENEMY_COUNT_LOW_MIN  + 1))
     : ENEMY_COUNT_HIGH_MIN + Math.floor(Math.random() * (ENEMY_COUNT_HIGH_MAX - ENEMY_COUNT_HIGH_MIN + 1))
-  return Array.from({ length: count }, () => makeEnemy(randomEnemyType(), dl, null))
+  // 通常敵はDL属性を持つが、一部は無属性のまま
+  return Array.from({ length: count }, () =>
+    makeEnemy(randomEnemyType(), dl, Math.random() < ENEMY_NEUTRAL_CHANCE ? null : attr)
+  )
 }
 function buildTurnOrder(partyIds: string[], chars: CharacterInstance[], enemies: EnemyInstance[]) {
   const all: { id: string; spd: number; isPlayer: boolean }[] = [
@@ -976,7 +979,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             <div className="grid grid-cols-2 gap-2">
               <button onClick={handleRetreat}
                 className="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-slate-200 font-bold py-2.5 rounded-lg text-sm">
-                撤退 (80%)
+                撤退 (50%)
               </button>
               <button onClick={handleNextStage}
                 className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2.5 rounded-lg text-sm">

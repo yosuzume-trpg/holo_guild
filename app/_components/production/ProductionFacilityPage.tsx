@@ -42,7 +42,6 @@ export default function ProductionFacilityPage({ facility }: Props) {
   const spendGold = useGameStore((s) => s.spendGold)
   const characters = useCharacterStore((s) => s.characters)
   const setAssignment = useCharacterStore((s) => s.setAssignment)
-  const gainProductionExp = useCharacterStore((s) => s.gainProductionExp)
   const inventoryMaterials = useInventoryStore((s) => s.materials)
   const addMaterial = useInventoryStore((s) => s.addMaterial)
   const facilityData = useFacilityStore((s) => s[facility])
@@ -63,8 +62,8 @@ export default function ProductionFacilityPage({ facility }: Props) {
     manualFracRef.current[key] = (manualFracRef.current[key] ?? 0) + 1 / matPrice
     const whole = Math.floor(manualFracRef.current[key])
     if (whole >= 1) {
+      // 手動生産では経験値は入らない（自動配置のみ加算）
       addMaterial(matId, whole)
-      gainProductionExp(charId, facility, whole)
       manualFracRef.current[key] -= whole
     }
   }

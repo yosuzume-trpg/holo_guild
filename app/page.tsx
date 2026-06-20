@@ -11,6 +11,7 @@ export default function HomePage() {
   const socialize    = useCharacterStore((s) => s.socialize)
   const cycleCount   = useGameStore((s) => s.cycleCount)
   const guildRank    = useGameStore((s) => s.guildRank)
+  const socializedThisCycle = useGameStore((s) => s.socializedThisCycle)
   const materials    = useInventoryStore((s) => s.materials)
 
   // Characters with affection >= 5 are shown on the home screen
@@ -84,7 +85,7 @@ export default function HomePage() {
                   <div className="flex justify-center mt-1">
                     <button
                       onClick={() => socialize(char.id)}
-                      disabled={char.socializedThisCycle}
+                      disabled={socializedThisCycle}
                       className="text-xs px-2 py-0.5 rounded bg-pink-700 hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
                     >
                       {char.socializedThisCycle ? '済' : '交遊'}
