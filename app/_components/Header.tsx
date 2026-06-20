@@ -25,9 +25,9 @@ export default function Header() {
     const minutesLeft = Math.ceil(((1 - cycleProgress) * CYCLE_DURATION_MS) / 60000);
 
     return (
-        <header className="shrink-0 bg-slate-800 text-white px-3  flex flex-col gap-1">
+        <header className="shrink-0 bg-surface text-ink px-3  flex flex-col gap-1">
             <div className="flex items-center justify-between text-sm">
-                <span className="w-16 font-bold text-yellow-300">{gold.toLocaleString()}G</span>
+                <span className="w-16 font-bold text-gold">{gold.toLocaleString()}G</span>
                 <span className="relative inline-flex items-center justify-center w-30 h-17">
                     <Image
                         src="/holo_guild/guildRank.png"
@@ -40,14 +40,14 @@ export default function Header() {
                         GR {guildRank}
                     </span>
                 </span>
-                <span className="w-16 text-slate-300">
+                <span className="w-16 text-ink">
                     Cycle{cycleCount} ({minutesLeft}分）
                 </span>
             </div>
             <ProgressBar
                 pct={cycleProgress * 100}
-                color="bg-blue-400"
-                trackColor="bg-slate-600"
+                color="bg-accent-strong"
+                trackColor="bg-surface-3"
                 barClassName="transition-all duration-1000"
             />
         </header>

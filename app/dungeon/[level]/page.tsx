@@ -59,10 +59,10 @@ type BattleState = StoredBattle;
 // ─── Constants ─────────────────────────────────────────────────────────────
 const ATTR_LABEL: Record<string, string> = { fire: "火", wind: "風", earth: "地", water: "水" };
 const ATTR_COLOR: Record<string, string> = {
-    fire: "text-red-400",
-    wind: "text-green-400",
+    fire: "text-danger",
+    wind: "text-success",
     earth: "text-yellow-600",
-    water: "text-blue-400",
+    water: "text-accent-strong",
 };
 
 type EnemyTypeKey = "standard" | "attack" | "magic" | "defense" | "elite" | "boss";
@@ -96,11 +96,11 @@ const TENDENCY_LABEL: Record<string, string> = {
     speed: "速度型",
 };
 const TENDENCY_COLOR: Record<string, string> = {
-    standard: "text-slate-400",
-    attack: "text-red-400",
+    standard: "text-ink-muted",
+    attack: "text-danger",
     magic: "text-purple-400",
-    defense: "text-blue-400",
-    speed: "text-green-400",
+    defense: "text-accent-strong",
+    speed: "text-success",
 };
 
 // ─── Pure helpers ──────────────────────────────────────────────────────────
@@ -743,13 +743,13 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                 <div className="flex items-center gap-3 mb-4">
                     <button
                         onClick={() => router.back()}
-                        className="text-sm text-slate-400 hover:text-white"
+                        className="text-sm text-ink-muted hover:text-ink"
                     >
                         ← 戻る
                     </button>
-                    <h1 className="text-lg font-bold text-slate-200">DL{dl} パーティ選択</h1>
+                    <h1 className="text-lg font-bold text-ink">DL{dl} パーティ選択</h1>
                 </div>
-                <p className="text-xs text-slate-400 mb-3">1〜5人選択 ({partyIds.length}/5)</p>
+                <p className="text-xs text-ink-muted mb-3">1〜5人選択 ({partyIds.length}/5)</p>
                 <div className="grid grid-cols-2 gap-2 mb-4">
                     {eligible.map((char) => {
                         const master = getCharacterMaster(char.masterId);
@@ -766,8 +766,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                 onClick={() => toggleParty(char.id)}
                                 className={`rounded-xl p-3 border text-left transition-colors ${
                                     sel
-                                        ? "bg-yellow-900 border-yellow-400 text-yellow-100"
-                                        : "bg-slate-800 border-slate-700 hover:border-slate-500 text-slate-200"
+                                        ? "bg-surface-2 border-accent-strong text-accent-strong"
+                                        : "bg-surface border-line hover:border-line-strong text-ink"
                                 }`}
                             >
                                 <div className="flex items-center justify-between gap-1 mb-0.5">
@@ -780,24 +780,24 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                         {TENDENCY_LABEL[char.tendency]}
                                     </span>
                                 </div>
-                                <div className="text-xs text-slate-400">
+                                <div className="text-xs text-ink-muted">
                                     HP: {char.currentHp}/{calcMaxHp(char, invEquipment)}
                                 </div>
                                 {(weaponName || armorName) && (
-                                    <div className="text-xs text-slate-500 mt-0.5 truncate">
+                                    <div className="text-xs text-ink-subtle mt-0.5 truncate">
                                         {weaponName && `⚔ ${weaponName}`}
                                         {weaponName && armorName ? "　" : ""}
                                         {armorName && `🛡 ${armorName}`}
                                     </div>
                                 )}
                                 <div className="mt-1.5">
-                                    <div className="flex justify-between text-xs text-slate-400 mb-0.5">
+                                    <div className="flex justify-between text-xs text-ink-muted mb-0.5">
                                         <span>戦闘 Lv.{char.battleLevel}</span>
                                         <span>
                                             {expCur}/{expNeeded}
                                         </span>
                                     </div>
-                                    <div className="w-full h-1 bg-slate-700 rounded-full">
+                                    <div className="w-full h-1 bg-surface-2 rounded-full">
                                         <div
                                             className="h-full bg-blue-500 rounded-full"
                                             style={{ width: `${expPct}%` }}
@@ -827,20 +827,20 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                 <div
                     className={`text-3xl font-bold mb-6 ${
                         result === "clear"
-                            ? "text-yellow-300"
+                            ? "text-accent-strong"
                             : result === "wipe"
-                              ? "text-red-400"
-                              : "text-slate-300"
+                              ? "text-danger"
+                              : "text-ink"
                     }`}
                 >
                     {result === "clear" ? "🎉 クリア！" : result === "wipe" ? "全滅..." : "撤退"}
                 </div>
                 {loot && (
-                    <div className="bg-slate-800 rounded-xl p-4 mb-6 text-sm text-left space-y-1.5">
-                        <div className="text-slate-400 font-semibold mb-2">獲得報酬</div>
+                    <div className="bg-surface rounded-xl p-4 mb-6 text-sm text-left space-y-1.5">
+                        <div className="text-ink-muted font-semibold mb-2">獲得報酬</div>
                         <div className="flex justify-between">
-                            <span className="text-slate-300">ゴールド</span>
-                            <span className="text-yellow-300 font-bold">
+                            <span className="text-ink">ゴールド</span>
+                            <span className="text-gold font-bold">
                                 {result === "retreat"
                                     ? Math.floor(loot.gold * RETREAT_REWARD_RATE)
                                     : loot.gold}
@@ -848,8 +848,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                             </span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-300">経験値</span>
-                            <span className="text-blue-300 font-bold">
+                            <span className="text-ink">経験値</span>
+                            <span className="text-accent-strong font-bold">
                                 {result === "retreat"
                                     ? Math.floor(loot.exp * RETREAT_REWARD_RATE)
                                     : loot.exp}
@@ -862,8 +862,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                 result === "retreat" ? Math.floor(qty * RETREAT_REWARD_RATE) : qty;
                             return (
                                 <div key={matId} className="flex justify-between">
-                                    <span className="text-slate-300">{m.name}</span>
-                                    <span className="text-green-300">×{actual}</span>
+                                    <span className="text-ink">{m.name}</span>
+                                    <span className="text-success">×{actual}</span>
                                 </div>
                             );
                         })}
@@ -871,8 +871,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                             const eq = getEquipment(eqId);
                             return (
                                 <div key={i} className="flex justify-between">
-                                    <span className="text-slate-300">{eq?.name ?? eqId}</span>
-                                    <span className="text-yellow-300">★1 入手</span>
+                                    <span className="text-ink">{eq?.name ?? eqId}</span>
+                                    <span className="text-accent-strong">★1 入手</span>
                                 </div>
                             );
                         })}
@@ -881,7 +881,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                 {result === "clear" && dl % 10 === 0 && (
                     <div className="mb-4">
                         {!grUpgraded && (
-                            <div className="rounded-xl p-3 text-sm font-semibold bg-slate-800 border border-slate-600 text-slate-400">
+                            <div className="rounded-xl p-3 text-sm font-semibold bg-surface border border-line text-ink-muted">
                                 ⚠️ GRアップには魔力結晶×{guildRank * GR_UPGRADE_MAT_COST} /
                                 古代歯車×{guildRank * GR_UPGRADE_MAT_COST} が必要です
                             </div>
@@ -893,14 +893,14 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                 );
                                 if (lockable.length === 0 || regionPicked) {
                                     return (
-                                        <div className="rounded-xl p-3 text-sm font-semibold bg-yellow-900 border border-yellow-500 text-yellow-200">
+                                        <div className="rounded-xl p-3 text-sm font-semibold bg-surface-2 border border-accent-strong text-accent-strong">
                                             🏆 ギルドランクが {guildRank} に上昇しました！
                                         </div>
                                     );
                                 }
                                 return (
-                                    <div className="bg-yellow-900 border border-yellow-500 rounded-xl p-3 space-y-2">
-                                        <div className="text-sm font-semibold text-yellow-200">
+                                    <div className="bg-surface-2 border border-accent-strong rounded-xl p-3 space-y-2">
+                                        <div className="text-sm font-semibold text-accent-strong">
                                             🏆 GR{guildRank} に上昇！解放する地域を1つ選んでください
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
@@ -911,7 +911,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                                         unlockRegion(r.id);
                                                         setRegionPicked(true);
                                                     }}
-                                                    className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2 rounded text-sm transition-colors"
+                                                    className="bg-accent hover:bg-accent-strong text-ink font-bold py-2 rounded text-sm transition-colors"
                                                 >
                                                     {r.name}
                                                 </button>
@@ -924,7 +924,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                 )}
                 <button
                     onClick={() => router.push("/dungeon")}
-                    className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl"
+                    className="w-full bg-surface-2 hover:bg-surface-3 text-ink py-3 rounded-xl"
                 >
                     ダンジョン一覧へ
                 </button>
@@ -949,8 +949,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
         return (
             <div className="flex flex-col h-full items-center justify-center p-6 gap-6">
                 <div className="text-center">
-                    <div className="text-xl font-bold text-yellow-300 mb-1">⚡ 分岐！</div>
-                    <div className="text-sm text-slate-400">
+                    <div className="text-xl font-bold text-accent-strong mb-1">⚡ 分岐！</div>
+                    <div className="text-sm text-ink-muted">
                         ステージ{pendingBranch.stage + 1} — どちらに進みますか？
                     </div>
                 </div>
@@ -959,10 +959,10 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                         <button
                             key={opt}
                             onClick={() => selectBranch(opt)}
-                            className="bg-slate-700 hover:bg-slate-600 border border-slate-500 hover:border-yellow-400 rounded-2xl p-6 text-center transition-colors"
+                            className="bg-surface-2 hover:bg-surface-3 border border-line-strong hover:border-accent-strong rounded-2xl p-6 text-center transition-colors"
                         >
                             <div className="text-3xl mb-2">{BRANCH_ICON[opt]}</div>
-                            <div className="text-sm font-bold text-slate-200">
+                            <div className="text-sm font-bold text-ink">
                                 {BRANCH_LABEL[opt]}
                             </div>
                         </button>
@@ -982,10 +982,10 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 shrink-0">
-                <div className="text-sm font-semibold text-slate-200">
+            <div className="bg-surface border-b border-line px-4 py-2 shrink-0">
+                <div className="text-sm font-semibold text-ink">
                     DL{dl} — {bs.currentStage + 1}/6ステージ
-                    <span className="ml-2 text-xs text-slate-400">
+                    <span className="ml-2 text-xs text-ink-muted">
                         {bs.stageType === "boss"
                             ? "🔴 BOSS"
                             : bs.stageType === "elite"
@@ -1003,7 +1003,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                 {/* Enemies */}
                 {bs.enemies.length > 0 && (
                     <div>
-                        <div className="text-xs text-slate-500 mb-1">敵</div>
+                        <div className="text-xs text-ink-subtle mb-1">敵</div>
                         <div className="flex gap-2 flex-wrap">
                             {bs.enemies.map((e) => {
                                 const isTarget = action === "attack" || action === "magic";
@@ -1018,13 +1018,13 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                         disabled={e.hp <= 0 || !isTarget}
                                         className={`rounded-lg p-2 text-center min-w-20 border transition-colors ${
                                             e.hp <= 0
-                                                ? "opacity-30 border-slate-700 bg-slate-800"
+                                                ? "opacity-30 border-line bg-surface"
                                                 : isTarget
-                                                  ? "border-yellow-400 bg-slate-700 hover:bg-slate-600 cursor-pointer"
-                                                  : "border-slate-700 bg-slate-800"
+                                                  ? "border-accent-strong bg-surface-2 hover:bg-surface-3 cursor-pointer"
+                                                  : "border-line bg-surface"
                                         }`}
                                     >
-                                        <div className="text-xs text-slate-300">
+                                        <div className="text-xs text-ink">
                                             {e.type}
                                             {e.attribute && (
                                                 <span className={`ml-1 ${ATTR_COLOR[e.attribute]}`}>
@@ -1032,10 +1032,10 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="text-xs text-slate-400 mt-0.5">
+                                        <div className="text-xs text-ink-muted mt-0.5">
                                             {e.hp}/{e.maxHp}
                                         </div>
-                                        <div className="w-full h-1 bg-slate-700 rounded mt-1">
+                                        <div className="w-full h-1 bg-surface-2 rounded mt-1">
                                             <div
                                                 className="h-full bg-red-500 rounded"
                                                 style={{ width: `${(e.hp / e.maxHp) * 100}%` }}
@@ -1050,7 +1050,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
 
                 {/* Party */}
                 <div>
-                    <div className="text-xs text-slate-500 mb-1">パーティ</div>
+                    <div className="text-xs text-ink-subtle mb-1">パーティ</div>
                     <div className="space-y-1.5">
                         {bs.partyIds.map((charId) => {
                             const char = characters.find((c) => c.id === charId)!;
@@ -1070,19 +1070,19 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                     key={charId}
                                     onClick={() => isItemTarget && hp > 0 && handleUseItem(charId)}
                                     disabled={hp <= 0 || !isItemTarget}
-                                    className={`w-full rounded-lg p-2.5 border text-left transition-colors ${
+                                    className={`w-full rounded-lg p-2.5 border text-left transition-all ${
                                         hp <= 0
-                                            ? "opacity-30 border-slate-700 bg-slate-800"
+                                            ? "opacity-30 border-line bg-surface"
                                             : isItemTarget
-                                              ? "border-yellow-400 bg-slate-700 hover:bg-slate-600 cursor-pointer"
+                                              ? "border-accent-strong bg-surface-2 hover:bg-surface-3 cursor-pointer"
                                               : isActing
-                                                ? "border-yellow-300 bg-slate-700"
-                                                : "border-slate-700 bg-slate-800"
+                                                ? "border-accent-strong bg-accent-soft ring-2 ring-accent-strong shadow-md scale-[1.02]"
+                                                : "border-line bg-surface"
                                     }`}
                                 >
                                     <div className="flex items-center justify-between mb-1">
                                         <div className="flex items-center gap-1.5 min-w-0">
-                                            <span className="text-sm font-semibold text-slate-100 truncate">
+                                            <span className="text-sm font-semibold text-ink truncate">
                                                 {master?.name}
                                             </span>
                                             <span
@@ -1090,19 +1090,24 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                             >
                                                 {TENDENCY_LABEL[char.tendency]}
                                             </span>
+                                            {isActing && (
+                                                <span className="text-[10px] font-bold text-white bg-accent-strong px-1.5 py-0.5 rounded-full shrink-0">
+                                                    ⚡行動中
+                                                </span>
+                                            )}
                                         </div>
-                                        <span className="text-xs text-slate-400 shrink-0 ml-1">
+                                        <span className="text-xs text-ink-muted shrink-0 ml-1">
                                             {hp}/{maxHp}
                                         </span>
                                     </div>
-                                    <div className="w-full h-1.5 bg-slate-700 rounded mb-1">
+                                    <div className="w-full h-1.5 bg-surface-2 rounded mb-1">
                                         <div
-                                            className={`h-full rounded transition-all ${hpPct > 50 ? "bg-green-500" : hpPct > 25 ? "bg-yellow-500" : "bg-red-500"}`}
+                                            className={`h-full rounded transition-all ${hpPct > 50 ? "bg-green-500" : hpPct > 25 ? "bg-accent" : "bg-red-500"}`}
                                             style={{ width: `${hpPct}%` }}
                                         />
                                     </div>
                                     {(weaponName || armorName) && (
-                                        <div className="text-xs text-slate-500 mb-1 truncate">
+                                        <div className="text-xs text-ink-subtle mb-1 truncate">
                                             {weaponName && `⚔ ${weaponName}`}
                                             {weaponName && armorName ? "　" : ""}
                                             {armorName && `🛡 ${armorName}`}
@@ -1113,7 +1118,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                             {buffs.map((b, i) => (
                                                 <span
                                                     key={i}
-                                                    className="text-xs bg-blue-900 text-blue-200 px-1 rounded"
+                                                    className="text-xs bg-blue-900 text-accent-strong px-1 rounded"
                                                 >
                                                     {b.type}+{b.percent}%({b.turnsRemaining}T)
                                                 </span>
@@ -1127,12 +1132,12 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                 </div>
 
                 {/* Battle log */}
-                <div className="bg-slate-900 rounded-lg p-2 max-h-28 overflow-y-auto">
+                <div className="bg-app rounded-lg p-2 max-h-28 overflow-y-auto">
                     {bs.log
                         .slice(-10)
                         .reverse()
                         .map((line, i) => (
-                            <div key={i} className="text-xs text-slate-400 leading-5">
+                            <div key={i} className="text-xs text-ink-muted leading-5">
                                 {line}
                             </div>
                         ))}
@@ -1140,13 +1145,13 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             </div>
 
             {/* Action bar */}
-            <div className="border-t border-slate-700 bg-slate-800 p-3 shrink-0">
+            <div className="border-t border-line bg-surface p-3 shrink-0">
                 {bs.battlePhase === "result" ? (
                     bs.currentStage + 1 >= 6 ? (
                         // Final stage cleared: call handleClear directly (must NOT be inside setBs updater)
                         <button
                             onClick={() => handleClear(bs)}
-                            className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2.5 rounded-lg"
+                            className="w-full bg-accent hover:bg-accent-strong text-ink font-bold py-2.5 rounded-lg"
                         >
                             🎉 ダンジョンクリア！
                         </button>
@@ -1154,13 +1159,13 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={handleRetreat}
-                                className="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-slate-200 font-bold py-2.5 rounded-lg text-sm"
+                                className="bg-surface-2 hover:bg-surface-3 border border-line-strong text-ink font-bold py-2.5 rounded-lg text-sm"
                             >
                                 撤退 (50%)
                             </button>
                             <button
                                 onClick={handleNextStage}
-                                className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2.5 rounded-lg text-sm"
+                                className="bg-accent hover:bg-accent-strong text-ink font-bold py-2.5 rounded-lg text-sm"
                             >
                                 次のステージへ →
                             </button>
@@ -1168,7 +1173,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                     )
                 ) : isPlayerTurn && actingChar ? (
                     <div>
-                        <div className="text-xs text-slate-400 mb-2">
+                        <div className="text-xs text-ink-muted mb-2">
                             ⚡ {getCharacterMaster(actingChar.masterId)?.name} のターン
                         </div>
                         {action === "menu" && (
@@ -1193,7 +1198,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                 </button>
                                 <button
                                     onClick={() => setAction("item")}
-                                    className="bg-slate-600 hover:bg-slate-500 text-white py-2 rounded text-sm font-bold"
+                                    className="bg-surface-3 hover:bg-surface-3 text-ink py-2 rounded text-sm font-bold"
                                 >
                                     アイテム
                                 </button>
@@ -1203,11 +1208,11 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setAction("menu")}
-                                    className="text-xs text-slate-400 hover:text-white border border-slate-600 px-2 py-1 rounded"
+                                    className="text-xs text-ink-muted hover:text-ink border border-line px-2 py-1 rounded"
                                 >
                                     ← 戻る
                                 </button>
-                                <span className="text-xs text-slate-400">↑ 攻撃する敵を選択</span>
+                                <span className="text-xs text-ink-muted">↑ 攻撃する敵を選択</span>
                             </div>
                         )}
                         {action === "item" && (
@@ -1215,11 +1220,11 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                 <div className="flex items-center gap-2 mb-2">
                                     <button
                                         onClick={() => setAction("menu")}
-                                        className="text-xs text-slate-400 hover:text-white border border-slate-600 px-2 py-1 rounded"
+                                        className="text-xs text-ink-muted hover:text-ink border border-line px-2 py-1 rounded"
                                     >
                                         ← 戻る
                                     </button>
-                                    <span className="text-xs text-slate-400">アイテムを選択</span>
+                                    <span className="text-xs text-ink-muted">アイテムを選択</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-1.5">
                                     {DUNGEON_ITEMS.map((itemId) => {
@@ -1233,12 +1238,12 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                                     setSelectedItem(itemId);
                                                     setAction("item-target");
                                                 }}
-                                                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 border border-slate-600 rounded p-2 text-left text-xs"
+                                                className="bg-surface-2 hover:bg-surface-3 disabled:opacity-40 border border-line rounded p-2 text-left text-xs"
                                             >
-                                                <div className="text-slate-200 font-medium">
+                                                <div className="text-ink font-medium">
                                                     {recipe?.name}
                                                 </div>
-                                                <div className="text-slate-400">残り{qty}個</div>
+                                                <div className="text-ink-muted">残り{qty}個</div>
                                             </button>
                                         );
                                     })}
@@ -1249,18 +1254,18 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setAction("item")}
-                                    className="text-xs text-slate-400 hover:text-white border border-slate-600 px-2 py-1 rounded"
+                                    className="text-xs text-ink-muted hover:text-ink border border-line px-2 py-1 rounded"
                                 >
                                     ← 戻る
                                 </button>
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs text-ink-muted">
                                     ↑ 対象キャラクターを選択
                                 </span>
                             </div>
                         )}
                     </div>
                 ) : (
-                    <div className="text-center text-sm text-slate-500 py-1">敵のターン...</div>
+                    <div className="text-center text-sm text-ink-subtle py-1">敵のターン...</div>
                 )}
             </div>
         </div>

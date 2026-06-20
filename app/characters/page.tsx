@@ -14,7 +14,7 @@ import ProgressBar from "@/app/_components/ui/ProgressBar";
 import type { CharacterInstance, EquipmentInstance } from "@/types/game";
 
 const TENDENCY_COLOR: Record<string, string> = {
-    standard: "bg-slate-500",
+    standard: "bg-surface-3",
     attack: "bg-red-600",
     magic: "bg-purple-600",
     defense: "bg-blue-600",
@@ -65,10 +65,10 @@ function expInLevel(totalExp: number, level: number): number {
 function StatCell({ base, bonus }: { base: number; bonus: number }) {
     const total = base + bonus;
     return (
-        <span className="text-slate-100 text-sm leading-tight">
+        <span className="text-ink text-sm leading-tight">
             {total}
             {bonus > 0 && (
-                <span className="text-green-400 text-[9px] ml-2">
+                <span className="text-success text-[9px] ml-2">
                     ({base}+{bonus})
                 </span>
             )}
@@ -92,7 +92,7 @@ function Level({
     return (
         <div className="flex justify-between">
             <div
-                className={`flex w-10 h-10 m-1 justify-center items-center text-2xl font-extrabold ${textColor || "text-yellow-300"}`}
+                className={`flex w-10 h-10 m-1 justify-center items-center text-2xl font-extrabold ${textColor || "text-accent-strong"}`}
             >
                 {level}
             </div>
@@ -100,7 +100,7 @@ function Level({
                 <span className="text-xs">
                     {expCur} / {expNeeded}
                 </span>
-                <ProgressBar pct={(expCur / expNeeded) * 100} color={color ?? "bg-yellow-300"} />
+                <ProgressBar pct={(expCur / expNeeded) * 100} color={color ?? "bg-accent"} />
             </div>
         </div>
     );
@@ -133,7 +133,7 @@ function CharacterCard({
     const expNeeded = 100 * char.battleLevel;
 
     return (
-        <div className="h-80 w-100 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex flex-row">
+        <div className="h-80 w-100 bg-surface border border-line rounded-xl overflow-hidden flex flex-row">
             {/* Portrait */}
             <div className="relative w-40 shrink-0 self-stretch block">
                 <Image
@@ -152,7 +152,7 @@ function CharacterCard({
                     <div className="w-full flex items-center gap-1 pb-1 mb-2 border-b">
                         <Link
                             href={`./characters/${char.id}/`}
-                            className="flex-1 truncate text-md font-extrabold text-slate-100"
+                            className="flex-1 truncate text-md font-extrabold text-ink"
                         >
                             {master?.name ?? char.masterId}
                         </Link>
@@ -161,7 +161,7 @@ function CharacterCard({
                         >
                             {TENDENCY_LABEL[char.tendency]}
                         </span>
-                        <span className="bg-yellow-500 text-slate-900 text-xs font-bold px-1 py-0.5 rounded leading-none shrink-0">
+                        <span className="bg-accent text-ink text-xs font-bold px-1 py-0.5 rounded leading-none shrink-0">
                             ★{char.starRank}
                         </span>
                     </div>
@@ -175,7 +175,7 @@ function CharacterCard({
                             expCur={char.affectionPoints}
                             expNeeded={char.affectionLevel * 100}
                             color="bg-pink-500"
-                            textColor="text-pink-200"
+                            textColor="text-affection"
                         />
                         <div className="flex flex-col gap-1">
                             <button
@@ -195,7 +195,7 @@ function CharacterCard({
                                     upgradeStarRank(char.id);
                                 }}
                                 disabled={!canUpgrade}
-                                className="flex flex-col px-1.5 py-0.5 rounded bg-yellow-800 hover:bg-yellow-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+                                className="flex flex-col px-1.5 py-0.5 rounded bg-surface-2 hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed text-ink transition-colors"
                             >
                                 <span>ランクアップ</span>
                                 <span>
@@ -213,24 +213,24 @@ function CharacterCard({
                             level={char.battleLevel}
                             expCur={expCur}
                             expNeeded={expNeeded}
-                            color="bg-yellow-500"
-                            textColor="text-yellow-500"
+                            color="bg-accent"
+                            textColor="text-accent-strong"
                         />
 
                         <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 items-baseline">
-                            <span className="text-slate-400 text-sm">HP</span>
+                            <span className="text-ink-muted text-sm">HP</span>
                             <StatCell base={stats.base.hp} bonus={stats.bonus.hp} />
-                            <span className="text-slate-400 text-sm">攻撃力</span>
+                            <span className="text-ink-muted text-sm">攻撃力</span>
                             <StatCell base={stats.base.atk} bonus={stats.bonus.atk} />
 
-                            <span className="text-slate-400 text-sm">防御力</span>
+                            <span className="text-ink-muted text-sm">防御力</span>
                             <StatCell base={stats.base.def} bonus={stats.bonus.def} />
-                            <span className="text-slate-400 text-sm">魔力</span>
+                            <span className="text-ink-muted text-sm">魔力</span>
                             <StatCell base={stats.base.mag} bonus={stats.bonus.mag} />
 
-                            <span className="text-slate-400 text-sm">魔法防</span>
+                            <span className="text-ink-muted text-sm">魔法防</span>
                             <StatCell base={stats.base.mdef} bonus={stats.bonus.mdef} />
-                            <span className="text-slate-400 text-sm">素早さ</span>
+                            <span className="text-ink-muted text-sm">素早さ</span>
                             <StatCell base={stats.base.spd} bonus={stats.bonus.spd} />
                         </div>
 
@@ -271,16 +271,16 @@ function CharacterCard({
                                 </div>
                             );
                         })}
-                        <div className="text-[10px] text-slate-400 pt-0.5">
+                        <div className="text-[10px] text-ink-muted pt-0.5">
                             道具: {getEquipName(char.equipment.tool) ?? "未装備"}
                         </div>
                     </div>
                 )}
 
                 {/* Assignment footer */}
-                <div className="text-[10px] text-slate-500 border-t border-slate-700 pt-1 mt-auto">
+                <div className="text-[10px] text-ink-subtle border-t border-line pt-1 mt-auto">
                     {char.assignment ? (
-                        <span className="text-slate-300">
+                        <span className="text-ink">
                             {ASSIGNMENT_LABEL[char.assignment.type] ?? char.assignment.type}
                         </span>
                     ) : (
@@ -305,7 +305,7 @@ export default function CharactersPage() {
 
     if (characters.length === 0) {
         return (
-            <div className="p-4 text-center text-slate-400 mt-12">キャラクターがまだいません</div>
+            <div className="p-4 text-center text-ink-muted mt-12">キャラクターがまだいません</div>
         );
     }
 
@@ -313,12 +313,12 @@ export default function CharactersPage() {
         <div className="p-4">
             {/* Header */}
             <div className="flex items-center justify-between mb-2">
-                <h1 className="text-lg font-bold text-slate-200">キャラクター一覧</h1>
-                <span className="text-sm text-slate-400">{characters.length}人</span>
+                <h1 className="text-lg font-bold text-ink">キャラクター一覧</h1>
+                <span className="text-sm text-ink-muted">{characters.length}人</span>
             </div>
 
             {/* Sticky tab bar */}
-            <div className="sticky top-0 z-10 -mx-4 px-4 py-2 mb-3 bg-slate-950 border-b border-slate-800">
+            <div className="sticky top-0 z-10 -mx-4 px-4 py-2 mb-3 bg-app border-b border-line-strong">
                 <div className="flex gap-2">
                     {(Object.keys(TAB_LABELS) as TabKey[]).map((t) => (
                         <button
@@ -326,8 +326,8 @@ export default function CharactersPage() {
                             onClick={() => setTab(t)}
                             className={`flex-1 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                                 tab === t
-                                    ? "bg-yellow-500 border-yellow-500 text-slate-900"
-                                    : "border-slate-600 text-slate-400 hover:border-slate-400 hover:text-slate-200"
+                                    ? "bg-accent border-accent-strong text-ink"
+                                    : "border-line text-ink-muted hover:border-line-strong hover:text-ink"
                             }`}
                         >
                             {TAB_LABELS[t]}

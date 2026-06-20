@@ -103,7 +103,7 @@ export default function ProductionFacilityPage({ facility }: Props) {
 
   return (
     <div className="p-4 space-y-5">
-      <h1 className="text-lg font-bold text-slate-200">
+      <h1 className="text-lg font-bold text-ink">
         {FACILITY_LABEL[facility]}施設
       </h1>
 
@@ -135,7 +135,7 @@ export default function ProductionFacilityPage({ facility }: Props) {
             <>
               {SKILL_LABEL[facility]}.{char[SKILL_KEY_MAP[facility]]}
               {mat && (
-                <span className="ml-2 text-green-400">
+                <span className="ml-2 text-success">
                   → {mat.name} ({mat.ratePerMin}/分)
                 </span>
               )}
@@ -150,7 +150,7 @@ export default function ProductionFacilityPage({ facility }: Props) {
           return (
             <button
               onClick={() => handleManualProduce(char.id, mat.id, mat.price)}
-              className="text-xs bg-slate-600 hover:bg-slate-500 border border-slate-500 text-slate-200 px-2 py-1 rounded transition-colors shrink-0"
+              className="text-xs bg-surface-3 hover:bg-surface-3 border border-line-strong text-ink px-2 py-1 rounded transition-colors shrink-0"
             >
               手動
             </button>
@@ -160,15 +160,15 @@ export default function ProductionFacilityPage({ facility }: Props) {
 
       {/* Materials inventory */}
       <div>
-        <div className="text-sm text-slate-400 mb-2">素材在庫</div>
+        <div className="text-sm text-ink-muted mb-2">素材在庫</div>
         <div className="grid grid-cols-2 gap-2">
           {materials.map((mat) => (
             <div
               key={mat.id}
-              className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm flex justify-between items-center"
+              className="bg-surface border border-line rounded-lg p-2 text-sm flex justify-between items-center"
             >
-              <span className="text-slate-300">{mat.name}</span>
-              <span className="font-semibold text-slate-100">
+              <span className="text-ink">{mat.name}</span>
+              <span className="font-semibold text-ink">
                 {inventoryMaterials[mat.id] ?? 0}
               </span>
             </div>
@@ -179,11 +179,11 @@ export default function ProductionFacilityPage({ facility }: Props) {
       {/* Assignment modal */}
       {assigningSlot !== null && (
         <Modal onClose={() => setAssigningSlot(null)} boxClassName="w-80 max-h-[80vh] flex flex-col">
-          <div className="text-base font-bold text-white mb-3">配置するキャラクターを選択</div>
+          <div className="text-base font-bold text-ink mb-3">配置するキャラクターを選択</div>
 
           {/* Material selection */}
           <div className="mb-3">
-            <div className="text-xs text-slate-400 mb-1">生産する素材</div>
+            <div className="text-xs text-ink-muted mb-1">生産する素材</div>
             <div className="grid grid-cols-2 gap-1">
               {materials.map((mat) => (
                 <button
@@ -191,22 +191,22 @@ export default function ProductionFacilityPage({ facility }: Props) {
                   onClick={() => setSelectedMaterial(mat.id)}
                   className={`text-xs p-2 rounded border transition-colors ${
                     selectedMaterial === mat.id
-                      ? 'border-yellow-400 text-yellow-300 bg-slate-700'
-                      : 'border-slate-600 text-slate-400 hover:border-slate-400'
+                      ? 'border-accent-strong text-accent-strong bg-surface-2'
+                      : 'border-line text-ink-muted hover:border-line-strong'
                   }`}
                 >
                   {mat.name}
-                  <span className="block text-slate-500">{mat.ratePerMin}/分</span>
+                  <span className="block text-ink-subtle">{mat.ratePerMin}/分</span>
                 </button>
               ))}
             </div>
           </div>
 
           {/* Available characters */}
-          <div className="text-xs text-slate-400 mb-2">配置可能なキャラクター</div>
+          <div className="text-xs text-ink-muted mb-2">配置可能なキャラクター</div>
           <div className="flex-1 overflow-y-auto space-y-2">
             {availableChars.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-4">配置可能なキャラクターがいません</p>
+              <p className="text-sm text-ink-subtle text-center py-4">配置可能なキャラクターがいません</p>
             ) : (
               availableChars.map((char) => {
                 const master = getCharacterMaster(char.masterId)
@@ -215,12 +215,12 @@ export default function ProductionFacilityPage({ facility }: Props) {
                   <button
                     key={char.id}
                     onClick={() => handleAssign(char.id)}
-                    className="w-full flex items-center gap-3 bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-yellow-400 rounded-lg p-2 text-left transition-colors"
+                    className="w-full flex items-center gap-3 bg-surface-2 hover:bg-surface-3 border border-line hover:border-accent-strong rounded-lg p-2 text-left transition-colors"
                   >
                     <CharacterAvatar masterId={char.masterId} size="xs" />
                     <div>
-                      <div className="text-sm text-slate-100">{master?.name ?? char.masterId}</div>
-                      <div className="text-xs text-slate-400">{SKILL_LABEL[facility]}.{skillLv}</div>
+                      <div className="text-sm text-ink">{master?.name ?? char.masterId}</div>
+                      <div className="text-xs text-ink-muted">{SKILL_LABEL[facility]}.{skillLv}</div>
                     </div>
                   </button>
                 )
@@ -230,7 +230,7 @@ export default function ProductionFacilityPage({ facility }: Props) {
 
           <button
             onClick={() => setAssigningSlot(null)}
-            className="mt-3 w-full bg-slate-700 hover:bg-slate-600 text-slate-300 py-2 rounded-lg text-sm"
+            className="mt-3 w-full bg-surface-2 hover:bg-surface-3 text-ink py-2 rounded-lg text-sm"
           >
             キャンセル
           </button>

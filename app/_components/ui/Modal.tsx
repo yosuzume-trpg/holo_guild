@@ -17,7 +17,7 @@ export default function Modal({ onClose, children, boxClassName = 'w-80' }: Prop
       onClick={onClose}
     >
       <div
-        className={`bg-slate-800 border border-slate-600 rounded-2xl p-4 ${boxClassName}`}
+        className={`bg-surface border border-line rounded-2xl p-4 ${boxClassName}`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}

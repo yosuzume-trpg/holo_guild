@@ -20,7 +20,7 @@ interface Props {
 }
 
 const BTN_CLASS =
-  'flex-1 text-xs bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-500 rounded py-1.5 transition-colors'
+  'flex-1 text-xs bg-surface-2 hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed border border-line-strong rounded py-1.5 transition-colors'
 
 /** 施設の枠数・ボーナス表示と拡張/研究ボタンの共通枠。生産施設・商人/工芸ギルドで共有。 */
 export default function FacilityStatsBox({
@@ -37,17 +37,17 @@ export default function FacilityStatsBox({
   researchAtMax = false,
 }: Props) {
   return (
-    <div className="bg-slate-800 rounded-lg p-3 text-sm space-y-1">
-      <div className="flex justify-between text-slate-300">
+    <div className="bg-surface rounded-lg p-3 text-sm space-y-1">
+      <div className="flex justify-between text-ink">
         <span>枠数</span>
         <span className="font-semibold">
           {slotCount}
-          {slotNote && <span className="text-xs text-slate-500"> {slotNote}</span>}
+          {slotNote && <span className="text-xs text-ink-subtle"> {slotNote}</span>}
         </span>
       </div>
-      <div className="flex justify-between text-slate-300">
+      <div className="flex justify-between text-ink">
         <span>{bonusLabel}</span>
-        <span className="font-semibold text-green-400">+{(bonusPct * 100).toFixed(0)}%</span>
+        <span className="font-semibold text-success">+{(bonusPct * 100).toFixed(0)}%</span>
       </div>
       <div className="flex gap-2 mt-2">
         <button onClick={onExpand} disabled={gold < expandCost || expandAtMax} className={BTN_CLASS}>

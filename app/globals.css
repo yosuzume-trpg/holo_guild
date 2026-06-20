@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0b3a5e;
 }
 
 @theme inline {
@@ -12,11 +12,28 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  /* 面 */
+  --color-app:        #ffffff;  /* アプリ背景 */
+  --color-surface:    #e1faff;  /* カード */
+  --color-surface-2:  #c9f1fb;  /* 入力・一段濃い面 */
+  --color-surface-3:  #b0e9f8;  /* hover/押下 */
+  /* 線 */
+  --color-line:        #5fdcf0;
+  --color-line-strong: #28c7ff;
+  /* 文字（濃紺を追加） */
+  --color-ink:        #0b3a5e;  /* 本文・見出し */
+  --color-ink-muted:  #3d6a86;  /* 補助 */
+  --color-ink-subtle: #6b95ab;  /* かすれ */
+  /* アクセント */
+  --color-accent:        #28c7ff; /* 主ボタン・選択 */
+  --color-accent-strong: #4fa0f1; /* アクティブ・リンク・見出し強調 */
+  --color-accent-soft:   #5fdcf0; /* hover補助 */
+  /* 意味色（ライト背景で可読なトーンに） */
+  --color-gold:      #e0a500;  /* 通貨・GR */
+  --color-success:   #16a34a;  /* ボーナス（緑） */
+  --color-danger:    #dc2626;  /* 危険・HP低（赤） */
+  --color-affection: #db2777;  /* 親愛（ピンク） */
 }
 
 body {

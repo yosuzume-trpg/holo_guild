@@ -208,7 +208,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
 
   if (!mounted) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-slate-900 text-slate-400">
+      <div className="flex h-dvh items-center justify-center bg-app text-ink-muted">
         読み込み中...
       </div>
     )
@@ -219,7 +219,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="relative flex flex-col h-dvh bg-slate-900 text-white">
+    <div className="relative flex flex-col h-dvh bg-app text-ink">
       <Header />
       <main className="flex-1 overflow-y-auto min-h-0">
         {children}
@@ -229,19 +229,19 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       {/* Block navigation during an active dungeon battle */}
       {activeBattle && !isOnDungeonPage && (
         <div className="absolute inset-0 bg-black/75 z-50 flex items-center justify-center">
-          <div className="bg-slate-800 border border-yellow-400 rounded-2xl p-6 text-center w-72 space-y-4">
-            <div className="text-yellow-300 font-bold text-lg">ダンジョン攻略中</div>
-            <div className="text-slate-300 text-sm">
+          <div className="bg-surface border border-accent-strong rounded-2xl p-6 text-center w-72 space-y-4">
+            <div className="text-accent-strong font-bold text-lg">ダンジョン攻略中</div>
+            <div className="text-ink text-sm">
               DL{activeBattle.dungeonLevel} —
               ステージ{activeBattle.currentStage + 1}/6
             </div>
-            <div className="text-xs text-slate-400">
+            <div className="text-xs text-ink-muted">
               {activeBattle.stageType === 'boss' ? '🔴 BOSS' :
                activeBattle.stageType === 'elite' ? '🟠 強敵' : '⚔️ 戦闘中'}
             </div>
             <Link
               href={`/dungeon/${activeBattle.dungeonLevel}`}
-              className="block w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-xl transition-colors"
+              className="block w-full bg-accent hover:bg-accent-strong text-ink font-bold py-3 rounded-xl transition-colors"
             >
               ダンジョンに戻る
             </Link>

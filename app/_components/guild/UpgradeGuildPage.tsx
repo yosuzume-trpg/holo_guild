@@ -90,7 +90,7 @@ export default function UpgradeGuildPage({ mode }: Props) {
 
   return (
     <div className="p-4 space-y-4">
-      <h1 className="text-lg font-bold text-slate-200">
+      <h1 className="text-lg font-bold text-ink">
         {mode === 'blacksmith' ? '鍛冶ギルド' : '仕立屋ギルド'}
       </h1>
 
@@ -100,8 +100,8 @@ export default function UpgradeGuildPage({ mode }: Props) {
           <button key={s} onClick={() => { setActiveSlot(s); setSel1(''); setSel2('') }}
             className={`flex-1 text-sm py-2 rounded border transition-colors ${
               activeSlot === s
-                ? 'border-yellow-400 text-yellow-300 bg-slate-800'
-                : 'border-slate-600 text-slate-400 hover:border-slate-400'
+                ? 'border-accent-strong text-accent-strong bg-surface'
+                : 'border-line text-ink-muted hover:border-line-strong'
             }`}>
             {SLOT_LABEL[s]}
           </button>
@@ -109,8 +109,8 @@ export default function UpgradeGuildPage({ mode }: Props) {
       </div>
 
       {/* Merge panel */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <div className="text-sm text-slate-400 mb-3">同じ種類・同じ★ランクを2つ選んで合成</div>
+      <div className="bg-surface border border-line rounded-xl p-4">
+        <div className="text-sm text-ink-muted mb-3">同じ種類・同じ★ランクを2つ選んで合成</div>
         <div className="grid grid-cols-2 gap-3 mb-4">
           {(['sel1', 'sel2'] as const).map((selKey) => {
             const isSel1 = selKey === 'sel1'
@@ -132,14 +132,14 @@ export default function UpgradeGuildPage({ mode }: Props) {
             const disabled = !isSel1 && !sel1
             return (
               <div key={selKey}>
-                <div className="text-xs text-slate-500 mb-1">
+                <div className="text-xs text-ink-subtle mb-1">
                   {isSel1 ? '素材①' : `素材②（未装備のみ）${disabled ? ' — 素材①を先に選択' : ''}`}
                 </div>
                 <select
                   value={selVal}
                   onChange={(e) => setFn(e.target.value)}
                   disabled={disabled}
-                  className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full bg-app border border-line rounded px-2 py-1.5 text-xs text-ink disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <option value="">選択</option>
                   {candidates.map((e) => {
@@ -153,11 +153,11 @@ export default function UpgradeGuildPage({ mode }: Props) {
                   })}
                 </select>
                 {master && item && (
-                  <div className="mt-1 text-xs text-slate-400">
+                  <div className="mt-1 text-xs text-ink-muted">
                     ★{item.starRank} {master.name}
-                    <div className="text-green-400">{master.baseEffectLabel}</div>
+                    <div className="text-success">{master.baseEffectLabel}</div>
                     {equippedInfo && (
-                      <div className="text-yellow-400">⚡ ★{equippedInfo.starRank} {equippedInfo.name} が装備中 → 強化後も装備維持</div>
+                      <div className="text-accent-strong">⚡ ★{equippedInfo.starRank} {equippedInfo.name} が装備中 → 強化後も装備維持</div>
                     )}
                   </div>
                 )}
@@ -167,7 +167,7 @@ export default function UpgradeGuildPage({ mode }: Props) {
         </div>
 
         {canMerge && (
-          <div className="text-xs text-slate-400 mb-3 space-y-0.5">
+          <div className="text-xs text-ink-muted mb-3 space-y-0.5">
             <div>必要素材: {getMaterial(matId ?? '')?.name} × {matNeeded}（所持: {matHave}）</div>
             <div>費用: {upgradeCost.toLocaleString()}G</div>
           </div>
@@ -175,30 +175,30 @@ export default function UpgradeGuildPage({ mode }: Props) {
 
         <button onClick={handleUpgrade}
           disabled={!canMerge || gold < upgradeCost || matHave < matNeeded}
-          className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-bold py-2 rounded-lg text-sm transition-colors">
+          className="w-full bg-accent hover:bg-accent-strong disabled:opacity-40 disabled:cursor-not-allowed text-ink font-bold py-2 rounded-lg text-sm transition-colors">
           合成して★アップ
         </button>
       </div>
 
       {/* Inventory list */}
       <div>
-        <div className="text-sm text-slate-400 mb-2">{SLOT_LABEL[activeSlot]}一覧</div>
+        <div className="text-sm text-ink-muted mb-2">{SLOT_LABEL[activeSlot]}一覧</div>
         {slotEquipment.length === 0 ? (
-          <p className="text-sm text-slate-600 text-center py-4">装備がありません</p>
+          <p className="text-sm text-ink-subtle text-center py-4">装備がありません</p>
         ) : (
           <div className="space-y-1">
             {slotEquipment.map((e) => {
               const master = EQUIPMENT_MASTERS.find((m) => m.id === e.masterId)
               const who = equippedBy.get(e.instanceId)
               return (
-                <div key={e.instanceId} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 flex justify-between text-sm items-center">
+                <div key={e.instanceId} className="bg-surface border border-line rounded-lg px-3 py-2 flex justify-between text-sm items-center">
                   <div>
-                    <span className="text-slate-200">★{e.starRank} {master?.name}</span>
+                    <span className="text-ink">★{e.starRank} {master?.name}</span>
                     {who && (
-                      <span className="ml-2 text-xs text-yellow-400">★{who.starRank} {who.name}</span>
+                      <span className="ml-2 text-xs text-accent-strong">★{who.starRank} {who.name}</span>
                     )}
                   </div>
-                  <span className="text-green-400 text-xs">{master?.baseEffectLabel}</span>
+                  <span className="text-success text-xs">{master?.baseEffectLabel}</span>
                 </div>
               )
             })}

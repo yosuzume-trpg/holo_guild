@@ -77,7 +77,7 @@ export default function TabNav() {
     return (
         <>
             {subTabs && (
-                <nav className="shrink-0 bg-slate-700 flex overflow-x-auto scrollbar-none">
+                <nav className="shrink-0 bg-surface-2 flex overflow-x-auto scrollbar-none">
                     {subTabs.map((tab) => {
                         const active = pathname === tab.href;
                         return (
@@ -86,8 +86,8 @@ export default function TabNav() {
                                 href={tab.href}
                                 className={`shrink-0 px-4 py-2 text-sm whitespace-nowrap border-b-2 transition-colors ${
                                     active
-                                        ? "text-white border-blue-400"
-                                        : "text-slate-400 border-transparent hover:text-slate-200"
+                                        ? "text-ink border-accent-strong"
+                                        : "text-ink-muted border-transparent hover:text-ink"
                                 }`}
                             >
                                 {tab.label}
@@ -97,7 +97,7 @@ export default function TabNav() {
                 </nav>
             )}
 
-            <nav className="shrink-0 bg-slate-800 border-t border-slate-700 flex">
+            <nav className="shrink-0 bg-surface border-t border-line flex">
                 {MAIN_TABS.map((tab) => {
                     const active = tab.match(pathname);
                     return (
@@ -105,7 +105,7 @@ export default function TabNav() {
                             key={tab.href}
                             href={tab.href}
                             className={`flex-1 py-1 flex justify-center text-xs transition-colors ${
-                                active ? "text-blue-400" : "text-slate-400 hover:text-slate-200"
+                                active ? "text-accent-strong" : "text-ink-muted hover:text-ink"
                             }`}
                         >
                             <span className="relative inline-flex items-center justify-center w-16 h-16">
@@ -116,7 +116,7 @@ export default function TabNav() {
                                     height={60}
                                     className={`w-16 h-16 object-contain transition-opacity ${active ? "opacity-100" : "opacity-60"}`}
                                 />
-                                <span className="absolute inset-x-0 bottom-1 text-center font-bold [-webkit-text-stroke:3px_#000] [paint-order:stroke_fill]">
+                                <span className="absolute inset-x-0 bottom-1 text-center font-bold [-webkit-text-stroke:3px_#fff] [paint-order:stroke_fill]">
                                     {tab.label}
                                 </span>
                             </span>

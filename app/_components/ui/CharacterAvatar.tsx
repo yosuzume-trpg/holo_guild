@@ -21,7 +21,7 @@ export default function CharacterAvatar({ masterId, size = 'md', className = '' 
   const master = getCharacterMaster(masterId)
   return (
     <div
-      className={`${SIZE_CLASS[size]} rounded-full bg-slate-600 flex items-center justify-center font-bold text-slate-300 shrink-0 ${className}`}
+      className={`${SIZE_CLASS[size]} rounded-full bg-surface-3 flex items-center justify-center font-bold text-ink shrink-0 ${className}`}
     >
       {master?.name.slice(0, 1) ?? '?'}
     </div>

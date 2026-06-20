@@ -22,16 +22,16 @@ export default function HomePage() {
   return (
     <div className="p-4 space-y-4">
       {/* Guild summary */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <div className="text-xs text-slate-400 mb-1">ギルドランク</div>
-        <div className="text-2xl font-bold text-yellow-300 mb-2">GR {guildRank}</div>
+      <div className="bg-surface border border-line rounded-xl p-4">
+        <div className="text-xs text-ink-muted mb-1">ギルドランク</div>
+        <div className="text-2xl font-bold text-gold mb-2">GR {guildRank}</div>
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="text-slate-400">サイクル数</div>
-          <div className="text-slate-200 text-right">{cycleCount}</div>
-          <div className="text-slate-400">メンバー数</div>
-          <div className="text-slate-200 text-right">{characters.length}人</div>
-          <div className="text-slate-400">素材在庫</div>
-          <div className="text-slate-200 text-right">{totalMaterialCount.toLocaleString()}個</div>
+          <div className="text-ink-muted">サイクル数</div>
+          <div className="text-ink text-right">{cycleCount}</div>
+          <div className="text-ink-muted">メンバー数</div>
+          <div className="text-ink text-right">{characters.length}人</div>
+          <div className="text-ink-muted">素材在庫</div>
+          <div className="text-ink text-right">{totalMaterialCount.toLocaleString()}個</div>
         </div>
       </div>
 
@@ -39,47 +39,47 @@ export default function HomePage() {
       <div className="grid grid-cols-2 gap-2">
         <Link
           href="/guild/offer"
-          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-yellow-400 rounded-lg p-3 text-center transition-colors"
+          className="bg-surface hover:bg-surface-2 border border-line hover:border-accent-strong rounded-lg p-3 text-center transition-colors"
         >
           <div className="text-lg mb-0.5">🏹</div>
-          <div className="text-sm font-semibold text-slate-200">キャラ募集</div>
+          <div className="text-sm font-semibold text-ink">キャラ募集</div>
         </Link>
         <Link
           href="/production/farm"
-          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-green-400 rounded-lg p-3 text-center transition-colors"
+          className="bg-surface hover:bg-surface-2 border border-line hover:border-green-400 rounded-lg p-3 text-center transition-colors"
         >
           <div className="text-lg mb-0.5">🌾</div>
-          <div className="text-sm font-semibold text-slate-200">生産管理</div>
+          <div className="text-sm font-semibold text-ink">生産管理</div>
         </Link>
         <Link
           href="/dungeon"
-          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-red-400 rounded-lg p-3 text-center transition-colors"
+          className="bg-surface hover:bg-surface-2 border border-line hover:border-red-400 rounded-lg p-3 text-center transition-colors"
         >
           <div className="text-lg mb-0.5">⚔️</div>
-          <div className="text-sm font-semibold text-slate-200">ダンジョン</div>
+          <div className="text-sm font-semibold text-ink">ダンジョン</div>
         </Link>
         <Link
           href="/characters"
-          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-purple-400 rounded-lg p-3 text-center transition-colors"
+          className="bg-surface hover:bg-surface-2 border border-line hover:border-purple-400 rounded-lg p-3 text-center transition-colors"
         >
           <div className="text-lg mb-0.5">👥</div>
-          <div className="text-sm font-semibold text-slate-200">キャラ一覧</div>
+          <div className="text-sm font-semibold text-ink">キャラ一覧</div>
         </Link>
       </div>
 
       {/* Home characters (affection >= 5) */}
       {homeChars.length > 0 && (
         <div>
-          <div className="text-sm text-slate-400 mb-2">ホームにいるメンバー</div>
+          <div className="text-sm text-ink-muted mb-2">ホームにいるメンバー</div>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {homeChars.map((char) => {
               const master = getCharacterMaster(char.masterId)
               return (
                 <div key={char.id} className="shrink-0">
-                  <div className="w-16 h-16 rounded-full bg-slate-600 flex items-center justify-center text-2xl font-bold text-slate-300 mx-auto mb-1">
+                  <div className="w-16 h-16 rounded-full bg-surface-3 flex items-center justify-center text-2xl font-bold text-ink mx-auto mb-1">
                     {master?.name.slice(0, 1) ?? '?'}
                   </div>
-                  <div className="text-xs text-slate-300 text-center w-16 truncate">
+                  <div className="text-xs text-ink text-center w-16 truncate">
                     {master?.name ?? char.masterId}
                   </div>
                   <div className="flex justify-center mt-1">
@@ -99,7 +99,7 @@ export default function HomePage() {
       )}
 
       {homeChars.length === 0 && characters.length > 0 && (
-        <div className="text-sm text-slate-500 text-center py-4 bg-slate-800 rounded-lg border border-slate-700">
+        <div className="text-sm text-ink-subtle text-center py-4 bg-surface rounded-lg border border-line">
           親愛度がLv.5以上になると<br />ホームに表示されます
         </div>
       )}

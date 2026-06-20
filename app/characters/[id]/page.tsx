@@ -23,7 +23,7 @@ const TENDENCY_LABEL: Record<string, string> = {
 }
 
 const TENDENCY_COLOR: Record<string, string> = {
-  standard: 'bg-slate-500',
+  standard: 'bg-surface-3',
   attack:   'bg-red-600',
   magic:    'bg-purple-600',
   defense:  'bg-blue-600',
@@ -57,8 +57,8 @@ export default function CharacterDetailPage({
   const char = characters.find((c) => c.id === id)
   if (!char) {
     return (
-      <div className="p-4 text-slate-400">
-        <Link href="/characters" className="text-sm text-slate-400 hover:text-white mb-4 block">
+      <div className="p-4 text-ink-muted">
+        <Link href="/characters" className="text-sm text-ink-muted hover:text-ink mb-4 block">
           ← 一覧に戻る
         </Link>
         キャラクターが見つかりません
@@ -82,21 +82,21 @@ export default function CharacterDetailPage({
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      <Link href="/characters" className="text-sm text-slate-400 hover:text-white mb-4 block">
+      <Link href="/characters" className="text-sm text-ink-muted hover:text-ink mb-4 block">
         ← 一覧に戻る
       </Link>
 
       {/* Header */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-4 text-center">
+      <div className="bg-surface border border-line rounded-xl p-4 mb-4 text-center">
         <div className="relative inline-block">
-          <div className="w-24 h-24 rounded-full bg-slate-600 flex items-center justify-center text-4xl font-bold text-slate-300 mx-auto mb-2">
+          <div className="w-24 h-24 rounded-full bg-surface-3 flex items-center justify-center text-4xl font-bold text-ink mx-auto mb-2">
             {master?.name.slice(0, 1) ?? '?'}
           </div>
-          <span className="absolute top-0 right-0 bg-yellow-500 text-slate-900 text-xs font-bold px-1.5 py-0.5 rounded">
+          <span className="absolute top-0 right-0 bg-accent text-ink text-xs font-bold px-1.5 py-0.5 rounded">
             ★{char.starRank}
           </span>
         </div>
-        <div className="text-xl font-bold text-slate-100 mb-1">
+        <div className="text-xl font-bold text-ink mb-1">
           {master?.name ?? char.masterId}
         </div>
         <div className="flex justify-center gap-2 mb-2">
@@ -110,11 +110,11 @@ export default function CharacterDetailPage({
           const canUpgrade = char.certificates >= certCost && gold >= goldCost
           return (
             <div className="flex items-center justify-center gap-3 text-xs">
-              <span className="text-slate-400">証書 {char.certificates}枚</span>
+              <span className="text-ink-muted">証書 {char.certificates}枚</span>
               <button
                 onClick={() => { if (spendGold(goldCost)) upgradeStarRank(char.id) }}
                 disabled={!canUpgrade}
-                className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-bold px-3 py-1 rounded-full transition-colors"
+                className="bg-accent hover:bg-accent-strong disabled:opacity-40 disabled:cursor-not-allowed text-ink font-bold px-3 py-1 rounded-full transition-colors"
               >
                 ★アップ（証書×{certCost} / {goldCost}G）
               </button>
@@ -124,22 +124,22 @@ export default function CharacterDetailPage({
       </div>
 
       {/* HP */}
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-3">
+      <div className="bg-surface border border-line rounded-lg p-3 mb-3">
         <div className="flex justify-between text-sm mb-1">
-          <span className="text-slate-400">HP</span>
-          <span className="text-slate-200">{char.currentHp} / {maxHp}</span>
+          <span className="text-ink-muted">HP</span>
+          <span className="text-ink">{char.currentHp} / {maxHp}</span>
         </div>
         <ProgressBar
           pct={hpPct}
           heightClass="h-2"
-          color={hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-yellow-500' : 'bg-red-500'}
+          color={hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-accent' : 'bg-red-500'}
           barClassName=""
         />
       </div>
 
       {/* Stats */}
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-3">
-        <div className="text-sm font-semibold text-slate-300 mb-2">ステータス</div>
+      <div className="bg-surface border border-line rounded-lg p-3 mb-3">
+        <div className="text-sm font-semibold text-ink mb-2">ステータス</div>
         <div className="grid grid-cols-3 gap-2 text-xs text-center">
           {([
             ['攻撃', effStats.atk, char.stats.atk],
@@ -148,18 +148,18 @@ export default function CharacterDetailPage({
             ['魔防', effStats.mdef, char.stats.mdef],
             ['素早', effStats.spd, char.stats.spd],
           ] as [string, number, number][]).map(([label, eff, base]) => (
-            <div key={label} className="bg-slate-700 rounded p-2">
-              <div className="text-slate-400">{label}</div>
-              <div className="text-slate-100 font-semibold">{eff}</div>
-              {eff !== base && <div className="text-green-400 text-xs">({base})</div>}
+            <div key={label} className="bg-surface-2 rounded p-2">
+              <div className="text-ink-muted">{label}</div>
+              <div className="text-ink font-semibold">{eff}</div>
+              {eff !== base && <div className="text-success text-xs">({base})</div>}
             </div>
           ))}
         </div>
       </div>
 
       {/* Levels */}
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-3">
-        <div className="text-sm font-semibold text-slate-300 mb-2">レベル</div>
+      <div className="bg-surface border border-line rounded-lg p-3 mb-3">
+        <div className="text-sm font-semibold text-ink mb-2">レベル</div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
           {[
             ['戦闘', char.battleLevel],
@@ -170,8 +170,8 @@ export default function CharacterDetailPage({
             ['工芸', char.craftLevel],
             ['商人', char.merchantLevel],
           ].map(([label, lv]) => (
-            <div key={label as string} className="flex justify-between text-slate-300">
-              <span className="text-slate-400">{label}</span>
+            <div key={label as string} className="flex justify-between text-ink">
+              <span className="text-ink-muted">{label}</span>
               <span>Lv.{lv}</span>
             </div>
           ))}
@@ -179,20 +179,20 @@ export default function CharacterDetailPage({
       </div>
 
       {/* Equipment */}
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-3">
-        <div className="text-sm font-semibold text-slate-300 mb-2">装備</div>
+      <div className="bg-surface border border-line rounded-lg p-3 mb-3">
+        <div className="text-sm font-semibold text-ink mb-2">装備</div>
         <div className="space-y-1.5">
           {(['weapon', 'armor', 'accessory', 'tool'] as const).map((slot) => {
             const inst = equippedItems[slot]
             const mast = inst ? getEquipment(inst.masterId) : null
             return (
               <button key={slot} onClick={() => setEquipModal(slot)}
-                className="w-full flex justify-between items-center text-sm bg-slate-700 hover:bg-slate-600 rounded px-3 py-2 transition-colors">
-                <span className="text-slate-400 w-20 text-left">{SLOT_LABEL[slot]}</span>
+                className="w-full flex justify-between items-center text-sm bg-surface-2 hover:bg-surface-3 rounded px-3 py-2 transition-colors">
+                <span className="text-ink-muted w-20 text-left">{SLOT_LABEL[slot]}</span>
                 {mast ? (
-                  <span className="text-slate-100">★{inst!.starRank} {mast.name}</span>
+                  <span className="text-ink">★{inst!.starRank} {mast.name}</span>
                 ) : (
-                  <span className="text-slate-500">未装備（タップで変更）</span>
+                  <span className="text-ink-subtle">未装備（タップで変更）</span>
                 )}
               </button>
             )
@@ -204,17 +204,17 @@ export default function CharacterDetailPage({
       {equipModal && (
         <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50"
           onClick={() => setEquipModal(null)}>
-          <div className="bg-slate-800 border border-slate-600 rounded-t-2xl w-full max-w-lg p-4 space-y-3 max-h-[70vh] overflow-y-auto"
+          <div className="bg-surface border border-line rounded-t-2xl w-full max-w-lg p-4 space-y-3 max-h-[70vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <div className="font-bold text-white">{SLOT_LABEL[equipModal]} 変更</div>
-              <button onClick={() => setEquipModal(null)} className="text-slate-400 hover:text-white text-xl leading-none">×</button>
+              <div className="font-bold text-ink">{SLOT_LABEL[equipModal]} 変更</div>
+              <button onClick={() => setEquipModal(null)} className="text-ink-muted hover:text-ink text-xl leading-none">×</button>
             </div>
 
             {/* Unequip option */}
             {char.equipment[equipModal] && (
               <button onClick={() => { equip(char.id, equipModal, null); setEquipModal(null) }}
-                className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-500 rounded-lg px-3 py-2.5 text-left text-sm text-red-400">
+                className="w-full bg-surface-2 hover:bg-surface-3 border border-line-strong rounded-lg px-3 py-2.5 text-left text-sm text-danger">
                 外す
               </button>
             )}
@@ -233,7 +233,7 @@ export default function CharacterDetailPage({
                 return m?.slot === equipModal
               })
               if (slotItems.length === 0) {
-                return <p className="text-sm text-slate-500 text-center py-2">所持装備なし</p>
+                return <p className="text-sm text-ink-subtle text-center py-2">所持装備なし</p>
               }
               return slotItems.map((e) => {
                 const m = getEquipment(e.masterId)
@@ -251,22 +251,22 @@ export default function CharacterDetailPage({
                     onClick={() => { if (!isDisabled) { equip(char.id, equipModal, e.instanceId); setEquipModal(null) } }}
                     className={`w-full rounded-lg px-3 py-2.5 text-left border transition-colors ${
                       isEquipped
-                        ? 'border-yellow-400 bg-yellow-900 text-yellow-100'
+                        ? 'border-accent-strong bg-surface-2 text-accent-strong'
                         : isDisabled
-                        ? 'border-slate-700 bg-slate-800 opacity-50 cursor-not-allowed'
-                        : 'border-slate-600 bg-slate-700 hover:bg-slate-600 text-slate-200'}`}>
+                        ? 'border-line bg-surface opacity-50 cursor-not-allowed'
+                        : 'border-line bg-surface-2 hover:bg-surface-3 text-ink'}`}>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold">★{e.starRank} {m?.name}</span>
-                      {isEquipped && <span className="text-xs text-yellow-400">装備中</span>}
+                      {isEquipped && <span className="text-xs text-accent-strong">装備中</span>}
                       {!isEquipped && usedByOther && (
-                        <span className="text-xs text-slate-500">{otherName} が装備中</span>
+                        <span className="text-xs text-ink-subtle">{otherName} が装備中</span>
                       )}
                       {!isEquipped && !usedByOther && rankTooHigh && (
-                        <span className="text-xs text-red-400">★{char.starRank}以下のみ</span>
+                        <span className="text-xs text-danger">★{char.starRank}以下のみ</span>
                       )}
                     </div>
                     {m?.baseEffectLabel && (
-                      <div className="text-xs text-green-400 mt-0.5">{m.baseEffectLabel}</div>
+                      <div className="text-xs text-success mt-0.5">{m.baseEffectLabel}</div>
                     )}
                   </button>
                 )
@@ -277,10 +277,10 @@ export default function CharacterDetailPage({
       )}
 
       {/* Affection */}
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-4">
+      <div className="bg-surface border border-line rounded-lg p-3 mb-4">
         <div className="flex justify-between text-sm mb-1">
-          <span className="text-slate-400">親愛度 Lv.{char.affectionLevel}</span>
-          <span className="text-slate-200">{char.affectionPoints} / {char.affectionLevel * AFFECTION_POINTS_PER_LEVEL}</span>
+          <span className="text-ink-muted">親愛度 Lv.{char.affectionLevel}</span>
+          <span className="text-ink">{char.affectionPoints} / {char.affectionLevel * AFFECTION_POINTS_PER_LEVEL}</span>
         </div>
         <div className="mb-2">
           <ProgressBar pct={affPct} color="bg-pink-500" barClassName="" />

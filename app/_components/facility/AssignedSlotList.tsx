@@ -26,7 +26,7 @@ export default function AssignedSlotList({
 }: Props) {
   return (
     <div>
-      <div className="text-sm text-slate-400 mb-2">配置スロット</div>
+      <div className="text-sm text-ink-muted mb-2">配置スロット</div>
       <div className="space-y-2">
         {slots.map((char, i) => {
           if (!char) {
@@ -34,7 +34,7 @@ export default function AssignedSlotList({
               <button
                 key={i}
                 onClick={() => onAddSlot(i)}
-                className="w-full bg-slate-800 border border-dashed border-slate-600 hover:border-yellow-400 rounded-lg p-3 text-slate-500 hover:text-slate-300 text-sm transition-colors text-center"
+                className="w-full bg-surface border border-dashed border-line hover:border-accent-strong rounded-lg p-3 text-ink-subtle hover:text-ink text-sm transition-colors text-center"
               >
                 ＋ キャラクターを配置
               </button>
@@ -44,19 +44,19 @@ export default function AssignedSlotList({
           return (
             <div
               key={char.id}
-              className="bg-slate-800 border border-slate-700 rounded-lg p-3 flex items-center gap-3"
+              className="bg-surface border border-line rounded-lg p-3 flex items-center gap-3"
             >
               <CharacterAvatar masterId={char.masterId} size="md" />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-slate-100 truncate">
+                <div className="text-sm font-semibold text-ink truncate">
                   {master?.name ?? char.masterId}
                 </div>
-                <div className="text-xs text-slate-400">{renderInfo(char)}</div>
+                <div className="text-xs text-ink-muted">{renderInfo(char)}</div>
               </div>
               {renderActions?.(char)}
               <button
                 onClick={() => onUnassign(char.id)}
-                className="text-xs text-slate-500 hover:text-red-400 transition-colors shrink-0"
+                className="text-xs text-ink-subtle hover:text-danger transition-colors shrink-0"
               >
                 解除
               </button>

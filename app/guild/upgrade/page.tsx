@@ -39,36 +39,36 @@ export default function GuildUpgradePage() {
 
   return (
     <div className="p-4 space-y-4">
-      <h1 className="text-lg font-bold text-slate-200">ギルドランクアップ</h1>
+      <h1 className="text-lg font-bold text-ink">ギルドランクアップ</h1>
 
       {/* Current rank */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 text-center">
-        <div className="text-xs text-slate-400 mb-1">現在のギルドランク</div>
-        <div className="text-4xl font-bold text-yellow-300">GR{guildRank}</div>
-        {!upgraded && <div className="text-sm text-slate-400 mt-1">→ GR{nextGr}</div>}
+      <div className="bg-surface border border-line rounded-xl p-4 text-center">
+        <div className="text-xs text-ink-muted mb-1">現在のギルドランク</div>
+        <div className="text-4xl font-bold text-gold">GR{guildRank}</div>
+        {!upgraded && <div className="text-sm text-ink-muted mt-1">→ GR{nextGr}</div>}
       </div>
 
       {/* Region selection after upgrade */}
       {upgraded && (
-        <div className="bg-yellow-900 border border-yellow-500 rounded-xl p-4 space-y-3">
-          <div className="text-sm font-semibold text-yellow-200">
+        <div className="bg-surface-2 border border-accent-strong rounded-xl p-4 space-y-3">
+          <div className="text-sm font-semibold text-accent-strong">
             🏆 GR{guildRank} に上昇しました！
           </div>
           {lockableRegions.length > 0 && !regionPicked ? (
             <>
-              <div className="text-xs text-yellow-300">解放する地域を1つ選んでください</div>
+              <div className="text-xs text-accent-strong">解放する地域を1つ選んでください</div>
               <div className="grid grid-cols-2 gap-2">
                 {lockableRegions.map((r) => (
                   <button key={r.id}
                     onClick={() => { unlockRegion(r.id); setRegionPicked(true) }}
-                    className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2 rounded-lg text-sm transition-colors">
+                    className="bg-accent hover:bg-accent-strong text-ink font-bold py-2 rounded-lg text-sm transition-colors">
                     {r.name}
                   </button>
                 ))}
               </div>
             </>
           ) : (
-            <div className="text-xs text-yellow-300">
+            <div className="text-xs text-accent-strong">
               {regionPicked ? '地域を解放しました。' : 'すべての地域が解放済みです。'}
             </div>
           )}
@@ -77,26 +77,26 @@ export default function GuildUpgradePage() {
 
       {/* Requirements */}
       {!upgraded && (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3">
-          <div className="text-sm font-semibold text-slate-300 mb-1">ランクアップ条件</div>
+        <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
+          <div className="text-sm font-semibold text-ink mb-1">ランクアップ条件</div>
 
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">DL{reqDl} クリア</span>
+            <span className="text-ink-muted">DL{reqDl} クリア</span>
             {dlCleared
-              ? <span className="text-green-400 font-semibold">✓ クリア済み</span>
-              : <span className="text-red-400">未クリア</span>}
+              ? <span className="text-success font-semibold">✓ クリア済み</span>
+              : <span className="text-danger">未クリア</span>}
           </div>
 
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">{crystalMat?.name ?? '魔力結晶'} × {cost}</span>
-            <span className={crystalHave >= cost ? 'text-green-400 font-semibold' : 'text-red-400'}>
+            <span className="text-ink-muted">{crystalMat?.name ?? '魔力結晶'} × {cost}</span>
+            <span className={crystalHave >= cost ? 'text-success font-semibold' : 'text-danger'}>
               所持: {crystalHave}
             </span>
           </div>
 
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">{gearMat?.name ?? '古代歯車'} × {cost}</span>
-            <span className={gearHave >= cost ? 'text-green-400 font-semibold' : 'text-red-400'}>
+            <span className="text-ink-muted">{gearMat?.name ?? '古代歯車'} × {cost}</span>
+            <span className={gearHave >= cost ? 'text-success font-semibold' : 'text-danger'}>
               所持: {gearHave}
             </span>
           </div>
@@ -108,7 +108,7 @@ export default function GuildUpgradePage() {
         <button
           onClick={handleUpgrade}
           disabled={!canUpgrade}
-          className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-bold py-3 rounded-xl transition-colors"
+          className="w-full bg-accent hover:bg-accent-strong disabled:opacity-40 disabled:cursor-not-allowed text-ink font-bold py-3 rounded-xl transition-colors"
         >
           {!dlCleared
             ? `DL${reqDl} をクリアしてください`
@@ -120,8 +120,8 @@ export default function GuildUpgradePage() {
 
       {/* Effects preview */}
       {!upgraded && (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 text-sm text-slate-400 space-y-1">
-          <div className="text-slate-300 font-semibold mb-2">GR{nextGr} 解放効果</div>
+        <div className="bg-surface border border-line rounded-xl p-4 text-sm text-ink-muted space-y-1">
+          <div className="text-ink font-semibold mb-2">GR{nextGr} 解放効果</div>
           <div>・施設拡張・研究の上限: {nextGr * GR_FACILITY_LEVEL_CAP} に上昇</div>
           <div>・戦闘レベルの上限: {nextGr * GR_BATTLE_LEVEL_CAP} に上昇</div>
           <div>・新しい地域の解放選択</div>

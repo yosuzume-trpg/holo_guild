@@ -72,7 +72,7 @@ export default function CraftPage() {
 
   return (
     <div className="p-4 space-y-4">
-      <h1 className="text-lg font-bold text-slate-200">工芸ギルド</h1>
+      <h1 className="text-lg font-bold text-ink">工芸ギルド</h1>
 
       <FacilityStatsBox
         slotCount={slotCount}
@@ -98,38 +98,38 @@ export default function CraftPage() {
           return (
             <>
               工芸Lv.{char.craftLevel}
-              {recipe && <span className="ml-2 text-green-400">→ {recipe.name} ({recipe.sellPrice}G)</span>}
+              {recipe && <span className="ml-2 text-success">→ {recipe.name} ({recipe.sellPrice}G)</span>}
             </>
           )
         }}
       />
 
       <div>
-        <div className="text-sm text-slate-400 mb-2">手動製作（クリックで即時1個）</div>
+        <div className="text-sm text-ink-muted mb-2">手動製作（クリックで即時1個）</div>
         {Object.entries(CATEGORY_LABEL).map(([cat, catLabel]) => {
           const catRecipes = RECIPES.filter((r) => r.category === cat)
           return (
             <div key={cat} className="mb-3">
-              <div className="text-xs text-slate-500 mb-1">{catLabel}</div>
+              <div className="text-xs text-ink-subtle mb-1">{catLabel}</div>
               <div className="grid grid-cols-2 gap-2">
                 {catRecipes.map((recipe) => {
                   const ok = canCraft(recipe.id)
                   return (
                     <button key={recipe.id} onClick={() => ok && handleManualCraft(recipe.id)} disabled={!ok}
-                      className="bg-slate-800 border border-slate-700 hover:border-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg p-2 text-left transition-colors">
-                      <div className="text-xs font-semibold text-slate-200">{recipe.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">
+                      className="bg-surface border border-line hover:border-accent-strong disabled:opacity-40 disabled:cursor-not-allowed rounded-lg p-2 text-left transition-colors">
+                      <div className="text-xs font-semibold text-ink">{recipe.name}</div>
+                      <div className="text-xs text-ink-muted mt-0.5">
                         {recipe.ingredients.map((ing) => {
                           const m = getMaterial(ing.materialId)
                           const have = materials[ing.materialId] ?? 0
                           return (
-                            <span key={ing.materialId} className={`mr-1 ${have >= ing.qty ? 'text-slate-400' : 'text-red-400'}`}>
+                            <span key={ing.materialId} className={`mr-1 ${have >= ing.qty ? 'text-ink-muted' : 'text-danger'}`}>
                               {m?.name}×{ing.qty}({have})
                             </span>
                           )
                         })}
                       </div>
-                      <div className="text-xs text-green-400 mt-0.5">→ {recipe.sellPrice}G</div>
+                      <div className="text-xs text-success mt-0.5">→ {recipe.sellPrice}G</div>
                     </button>
                   )
                 })}
@@ -141,11 +141,11 @@ export default function CraftPage() {
 
       {assignOpen && (
         <Modal onClose={() => setAssignOpen(false)} boxClassName="w-80 space-y-3">
-          <div className="font-bold text-white">配置設定</div>
+          <div className="font-bold text-ink">配置設定</div>
           <div>
-            <div className="text-xs text-slate-400 mb-1">キャラクター</div>
+            <div className="text-xs text-ink-muted mb-1">キャラクター</div>
             <select value={pickCharId} onChange={(e) => setPickCharId(e.target.value)}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200">
+              className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink">
               {availableChars.map((c) => {
                 const m = getCharacterMaster(c.masterId)
                 return <option key={c.id} value={c.id}>{m?.name ?? c.masterId} (工芸Lv.{c.craftLevel})</option>
@@ -153,9 +153,9 @@ export default function CraftPage() {
             </select>
           </div>
           <div>
-            <div className="text-xs text-slate-400 mb-1">製作するレシピ</div>
+            <div className="text-xs text-ink-muted mb-1">製作するレシピ</div>
             <select value={pickRecipeId} onChange={(e) => setPickRecipeId(e.target.value)}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200">
+              className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink">
               {RECIPES.map((r) => (
                 <option key={r.id} value={r.id}>{r.name} ({r.sellPrice}G)</option>
               ))}
@@ -163,9 +163,9 @@ export default function CraftPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={() => setAssignOpen(false)}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 py-2 rounded text-sm">キャンセル</button>
+              className="flex-1 bg-surface-2 hover:bg-surface-3 text-ink py-2 rounded text-sm">キャンセル</button>
             <button onClick={confirmAssign} disabled={!pickCharId}
-              className="flex-1 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-slate-900 font-bold py-2 rounded text-sm">配置</button>
+              className="flex-1 bg-accent hover:bg-accent-strong disabled:opacity-40 text-ink font-bold py-2 rounded text-sm">配置</button>
           </div>
         </Modal>
       )}

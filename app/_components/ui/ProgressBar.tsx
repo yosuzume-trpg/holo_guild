@@ -1,9 +1,9 @@
 interface Props {
   /** 進捗率（0〜100）。範囲外はクランプされる */
   pct: number
-  /** バーの色クラス（既定: bg-yellow-300） */
+  /** バーの色クラス（既定: bg-accent） */
   color?: string
-  /** トラックの色クラス（既定: bg-slate-700） */
+  /** トラックの色クラス（既定: bg-surface-2） */
   trackColor?: string
   /** 高さクラス（既定: h-1.5） */
   heightClass?: string
@@ -14,8 +14,8 @@ interface Props {
 /** 各ページで重複していたプログレスバーの共通コンポーネント。 */
 export default function ProgressBar({
   pct,
-  color = 'bg-yellow-300',
-  trackColor = 'bg-slate-700',
+  color = 'bg-accent',
+  trackColor = 'bg-surface-2',
   heightClass = 'h-1.5',
   barClassName = 'transition-all',
 }: Props) {

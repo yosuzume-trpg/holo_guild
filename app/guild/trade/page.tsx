@@ -38,7 +38,7 @@ export default function TradePage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-lg font-bold text-slate-200 mb-4">貿易</h1>
+      <h1 className="text-lg font-bold text-ink mb-4">貿易</h1>
 
       {/* Pool tabs */}
       <div className="flex gap-1 mb-4">
@@ -48,8 +48,8 @@ export default function TradePage() {
             onClick={() => { setActivePool(p.key); setResult(null) }}
             className={`flex-1 text-xs py-2 rounded border transition-colors ${
               activePool === p.key
-                ? 'border-yellow-400 text-yellow-300 bg-slate-800'
-                : 'border-slate-600 text-slate-400 hover:border-slate-400'
+                ? 'border-accent-strong text-accent-strong bg-surface'
+                : 'border-line text-ink-muted hover:border-line-strong'
             }`}
           >
             {p.label}
@@ -58,12 +58,12 @@ export default function TradePage() {
       </div>
 
       {/* Pool contents */}
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-4">
-        <div className="text-xs text-slate-400 mb-2">排出アイテム（全{pool.length}種・等確率）</div>
+      <div className="bg-surface border border-line rounded-lg p-3 mb-4">
+        <div className="text-xs text-ink-muted mb-2">排出アイテム（全{pool.length}種・等確率）</div>
         <div className="grid grid-cols-2 gap-1">
           {pool.map((item) => (
-            <div key={item.id} className="text-xs text-slate-300 flex items-center gap-1">
-              <span className="text-slate-500">・</span>
+            <div key={item.id} className="text-xs text-ink flex items-center gap-1">
+              <span className="text-ink-subtle">・</span>
               {item.name}
               {item.attribute && (
                 <span className="text-xs text-orange-400">[{ATTRIBUTE_LABEL[item.attribute]}]</span>
@@ -77,23 +77,23 @@ export default function TradePage() {
       <button
         onClick={handlePull}
         disabled={gold < TRADE_COST}
-        className="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-500 hover:border-yellow-400 text-white font-bold py-3 rounded-lg transition-colors mb-4"
+        className="w-full bg-surface-2 hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed border border-line-strong hover:border-accent-strong text-ink font-bold py-3 rounded-lg transition-colors mb-4"
       >
         {POOLS.find((p) => p.key === activePool)!.label}を引く（{TRADE_COST.toLocaleString()}G）
       </button>
 
       {/* Result */}
       {result && (
-        <div className="bg-slate-800 border border-yellow-500 rounded-xl p-4 text-center">
-          <div className="text-xs text-yellow-300 mb-1">入手！</div>
-          <div className="text-xl font-bold text-white mb-1">
+        <div className="bg-surface border border-accent-strong rounded-xl p-4 text-center">
+          <div className="text-xs text-accent-strong mb-1">入手！</div>
+          <div className="text-xl font-bold text-ink mb-1">
             {result.name}
             {result.attribute && (
               <span className="text-sm text-orange-400 ml-1">[{ATTRIBUTE_LABEL[result.attribute]}]</span>
             )}
           </div>
-          <div className="text-xs text-slate-400 mb-2">★1</div>
-          <div className="text-sm text-green-400">{result.baseEffectLabel}</div>
+          <div className="text-xs text-ink-muted mb-2">★1</div>
+          <div className="text-sm text-success">{result.baseEffectLabel}</div>
         </div>
       )}
     </div>
