@@ -43,11 +43,11 @@ export default function UpgradeGuildPage({ mode }: Props) {
   const upgradeEquipment = useInventoryStore((s) => s.upgradeEquipment)
   const characters = useCharacterStore((s) => s.characters)
 
-  // Map: instanceId → character name (for equipped items)
-  const equippedByName = new Map<string, string>()
+  // Map: instanceId → { name, starRank } of equipped character
+  const equippedBy = new Map<string, { name: string; starRank: number }>()
   for (const char of characters) {
     for (const iid of Object.values(char.equipment)) {
-      if (iid) equippedByName.set(iid, getCharacterMaster(char.masterId)?.name ?? '?')
+      if (iid) equippedBy.set(iid, { name: getCharacterMaster(char.masterId)?.name ?? '?', starRank: char.starRank })
     }
   }
 
@@ -119,25 +119,35 @@ export default function UpgradeGuildPage({ mode }: Props) {
             const other  = isSel1 ? sel2 : sel1
             const item   = slotEquipment.find((e) => e.instanceId === selVal)
             const master = item ? EQUIPMENT_MASTERS.find((m) => m.id === item.masterId) : null
-            // 素材②: exclude items equipped by anyone; 素材①: show all
             const candidates = slotEquipment.filter((e) => {
               if (e.instanceId === other) return false
-              if (!isSel1 && equippedByName.has(e.instanceId)) return false
+              if (!isSel1) {
+                if (equippedBy.has(e.instanceId)) return false
+                if (item1 && e.masterId !== item1.masterId) return false
+                if (item1 && e.starRank !== item1.starRank) return false
+              }
               return true
             })
-            const equippedBy = item ? equippedByName.get(item.instanceId) : undefined
+            const equippedInfo = item ? equippedBy.get(item.instanceId) : undefined
+            const disabled = !isSel1 && !sel1
             return (
               <div key={selKey}>
-                <div className="text-xs text-slate-500 mb-1">{isSel1 ? '素材①' : '素材②（未装備のみ）'}</div>
-                <select value={selVal} onChange={(e) => setFn(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200">
+                <div className="text-xs text-slate-500 mb-1">
+                  {isSel1 ? '素材①' : `素材②（未装備のみ）${disabled ? ' — 素材①を先に選択' : ''}`}
+                </div>
+                <select
+                  value={selVal}
+                  onChange={(e) => setFn(e.target.value)}
+                  disabled={disabled}
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
                   <option value="">選択</option>
                   {candidates.map((e) => {
                     const m = EQUIPMENT_MASTERS.find((em) => em.id === e.masterId)
-                    const who = isSel1 ? equippedByName.get(e.instanceId) : undefined
+                    const who = isSel1 ? equippedBy.get(e.instanceId) : undefined
                     return (
                       <option key={e.instanceId} value={e.instanceId}>
-                        ★{e.starRank} {m?.name}{who ? ` [${who}装備中]` : ''}
+                        ★{e.starRank} {m?.name}{who ? ` [★${who.starRank} ${who.name}装備中]` : ''}
                       </option>
                     )
                   })}
@@ -146,8 +156,8 @@ export default function UpgradeGuildPage({ mode }: Props) {
                   <div className="mt-1 text-xs text-slate-400">
                     ★{item.starRank} {master.name}
                     <div className="text-green-400">{master.baseEffectLabel}</div>
-                    {equippedBy && (
-                      <div className="text-yellow-400">⚡ {equippedBy} が装備中 → 強化後も装備維持</div>
+                    {equippedInfo && (
+                      <div className="text-yellow-400">⚡ ★{equippedInfo.starRank} {equippedInfo.name} が装備中 → 強化後も装備維持</div>
                     )}
                   </div>
                 )}
@@ -179,9 +189,15 @@ export default function UpgradeGuildPage({ mode }: Props) {
           <div className="space-y-1">
             {slotEquipment.map((e) => {
               const master = EQUIPMENT_MASTERS.find((m) => m.id === e.masterId)
+              const who = equippedBy.get(e.instanceId)
               return (
-                <div key={e.instanceId} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 flex justify-between text-sm">
-                  <span className="text-slate-200">★{e.starRank} {master?.name}</span>
+                <div key={e.instanceId} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 flex justify-between text-sm items-center">
+                  <div>
+                    <span className="text-slate-200">★{e.starRank} {master?.name}</span>
+                    {who && (
+                      <span className="ml-2 text-xs text-yellow-400">★{who.starRank} {who.name}</span>
+                    )}
+                  </div>
                   <span className="text-green-400 text-xs">{master?.baseEffectLabel}</span>
                 </div>
               )

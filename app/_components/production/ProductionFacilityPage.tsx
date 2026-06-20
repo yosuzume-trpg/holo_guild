@@ -4,10 +4,15 @@ import { useRef, useState } from 'react'
 import type { ProductionFacilityId } from '@/types/game'
 import { MATERIALS_BY_FACILITY } from '@/data/materials'
 import { getCharacterMaster } from '@/data/characters'
+import { GR_FACILITY_LEVEL_CAP } from '@/data/constants'
 import { useGameStore } from '@/store/gameStore'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useFacilityStore } from '@/store/facilityStore'
+import FacilityStatsBox from '@/app/_components/facility/FacilityStatsBox'
+import AssignedSlotList from '@/app/_components/facility/AssignedSlotList'
+import CharacterAvatar from '@/app/_components/ui/CharacterAvatar'
+import Modal from '@/app/_components/ui/Modal'
 
 const FACILITY_LABEL: Record<ProductionFacilityId, string> = {
   farm:    '農業',
@@ -55,7 +60,7 @@ export default function ProductionFacilityPage({ facility }: Props) {
   const [selectedMaterial, setSelectedMaterial] = useState<string>(materials[0]?.id ?? '')
   const manualFracRef = useRef<Record<string, number>>({})
 
-  const maxLevel = guildRank * 10
+  const maxLevel = guildRank * GR_FACILITY_LEVEL_CAP
 
   function handleManualProduce(charId: string, matId: string, matPrice: number) {
     const key = `${charId}:${matId}`
@@ -103,91 +108,55 @@ export default function ProductionFacilityPage({ facility }: Props) {
       </h1>
 
       {/* Facility stats */}
-      <div className="bg-slate-800 rounded-lg p-3 text-sm space-y-1">
-        <div className="flex justify-between text-slate-300">
-          <span>枠数</span>
-          <span className="font-semibold">{slotCount} <span className="text-xs text-slate-500">(上限 GR×10={maxLevel})</span></span>
-        </div>
-        <div className="flex justify-between text-slate-300">
-          <span>研究ボーナス</span>
-          <span className="font-semibold text-green-400">+{(researchBonus * 100).toFixed(0)}%</span>
-        </div>
-        <div className="flex gap-2 mt-2">
-          <button
-            onClick={() => { if (spendGold(expandCost)) expandProduction(facility) }}
-            disabled={gold < expandCost || facilityData.expansionLevel >= maxLevel}
-            className="flex-1 text-xs bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-500 rounded py-1.5 transition-colors"
-          >
-            {facilityData.expansionLevel >= maxLevel ? '拡張上限' : `拡張 (${expandCost.toLocaleString()}G)`}
-          </button>
-          <button
-            onClick={() => { if (spendGold(researchCost)) researchProduction(facility) }}
-            disabled={gold < researchCost || facilityData.researchLevel >= maxLevel}
-            className="flex-1 text-xs bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-500 rounded py-1.5 transition-colors"
-          >
-            {facilityData.researchLevel >= maxLevel ? '研究上限' : `研究 (${researchCost.toLocaleString()}G)`}
-          </button>
-        </div>
-      </div>
+      <FacilityStatsBox
+        slotCount={slotCount}
+        slotNote={`(上限 GR×10=${maxLevel})`}
+        bonusLabel="研究ボーナス"
+        bonusPct={researchBonus}
+        gold={gold}
+        expandCost={expandCost}
+        researchCost={researchCost}
+        onExpand={() => { if (spendGold(expandCost)) expandProduction(facility) }}
+        onResearch={() => { if (spendGold(researchCost)) researchProduction(facility) }}
+        expandAtMax={facilityData.expansionLevel >= maxLevel}
+        researchAtMax={facilityData.researchLevel >= maxLevel}
+      />
 
       {/* Slots */}
-      <div>
-        <div className="text-sm text-slate-400 mb-2">配置スロット</div>
-        <div className="space-y-2">
-          {slots.map((char, i) => {
-            if (!char) {
-              return (
-                <button
-                  key={i}
-                  onClick={() => setAssigningSlot(i)}
-                  className="w-full bg-slate-800 border border-dashed border-slate-600 hover:border-yellow-400 rounded-lg p-3 text-slate-500 hover:text-slate-300 text-sm transition-colors text-center"
-                >
-                  ＋ キャラクターを配置
-                </button>
-              )
-            }
-            const master = getCharacterMaster(char.masterId)
-            const asgn   = char.assignment
-            const matId  = asgn?.type === facility ? asgn.materialId : ''
-            const mat    = materials.find((m) => m.id === matId)
-            const skillLv = char[SKILL_KEY_MAP[facility]]
-            return (
-              <div key={char.id} className="bg-slate-800 border border-slate-700 rounded-lg p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center text-sm font-bold text-slate-300 shrink-0">
-                  {master?.name.slice(0, 1) ?? '?'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-slate-100 truncate">
-                    {master?.name ?? char.masterId}
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    {SKILL_LABEL[facility]}.{skillLv}
-                    {mat && (
-                      <span className="ml-2 text-green-400">
-                        → {mat.name} ({mat.ratePerMin}/分)
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {mat && (
-                  <button
-                    onClick={() => handleManualProduce(char.id, mat.id, mat.price)}
-                    className="text-xs bg-slate-600 hover:bg-slate-500 border border-slate-500 text-slate-200 px-2 py-1 rounded transition-colors shrink-0"
-                  >
-                    手動
-                  </button>
-                )}
-                <button
-                  onClick={() => handleUnassign(char.id)}
-                  className="text-xs text-slate-500 hover:text-red-400 transition-colors shrink-0"
-                >
-                  解除
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <AssignedSlotList
+        slots={slots}
+        onAddSlot={(i) => setAssigningSlot(i)}
+        onUnassign={handleUnassign}
+        renderInfo={(char) => {
+          const asgn  = char.assignment
+          const matId = asgn?.type === facility ? asgn.materialId : ''
+          const mat   = materials.find((m) => m.id === matId)
+          return (
+            <>
+              {SKILL_LABEL[facility]}.{char[SKILL_KEY_MAP[facility]]}
+              {mat && (
+                <span className="ml-2 text-green-400">
+                  → {mat.name} ({mat.ratePerMin}/分)
+                </span>
+              )}
+            </>
+          )
+        }}
+        renderActions={(char) => {
+          const asgn  = char.assignment
+          const matId = asgn?.type === facility ? asgn.materialId : ''
+          const mat   = materials.find((m) => m.id === matId)
+          if (!mat) return null
+          return (
+            <button
+              onClick={() => handleManualProduce(char.id, mat.id, mat.price)}
+              className="text-xs bg-slate-600 hover:bg-slate-500 border border-slate-500 text-slate-200 px-2 py-1 rounded transition-colors shrink-0"
+            >
+              手動
+            </button>
+          )
+        }}
+      />
 
       {/* Materials inventory */}
       <div>
@@ -209,73 +178,63 @@ export default function ProductionFacilityPage({ facility }: Props) {
 
       {/* Assignment modal */}
       {assigningSlot !== null && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-          onClick={() => setAssigningSlot(null)}
-        >
-          <div
-            className="bg-slate-800 border border-slate-600 rounded-2xl p-4 w-80 max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-base font-bold text-white mb-3">配置するキャラクターを選択</div>
+        <Modal onClose={() => setAssigningSlot(null)} boxClassName="w-80 max-h-[80vh] flex flex-col">
+          <div className="text-base font-bold text-white mb-3">配置するキャラクターを選択</div>
 
-            {/* Material selection */}
-            <div className="mb-3">
-              <div className="text-xs text-slate-400 mb-1">生産する素材</div>
-              <div className="grid grid-cols-2 gap-1">
-                {materials.map((mat) => (
-                  <button
-                    key={mat.id}
-                    onClick={() => setSelectedMaterial(mat.id)}
-                    className={`text-xs p-2 rounded border transition-colors ${
-                      selectedMaterial === mat.id
-                        ? 'border-yellow-400 text-yellow-300 bg-slate-700'
-                        : 'border-slate-600 text-slate-400 hover:border-slate-400'
-                    }`}
-                  >
-                    {mat.name}
-                    <span className="block text-slate-500">{mat.ratePerMin}/分</span>
-                  </button>
-                ))}
-              </div>
+          {/* Material selection */}
+          <div className="mb-3">
+            <div className="text-xs text-slate-400 mb-1">生産する素材</div>
+            <div className="grid grid-cols-2 gap-1">
+              {materials.map((mat) => (
+                <button
+                  key={mat.id}
+                  onClick={() => setSelectedMaterial(mat.id)}
+                  className={`text-xs p-2 rounded border transition-colors ${
+                    selectedMaterial === mat.id
+                      ? 'border-yellow-400 text-yellow-300 bg-slate-700'
+                      : 'border-slate-600 text-slate-400 hover:border-slate-400'
+                  }`}
+                >
+                  {mat.name}
+                  <span className="block text-slate-500">{mat.ratePerMin}/分</span>
+                </button>
+              ))}
             </div>
-
-            {/* Available characters */}
-            <div className="text-xs text-slate-400 mb-2">配置可能なキャラクター</div>
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {availableChars.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">配置可能なキャラクターがいません</p>
-              ) : (
-                availableChars.map((char) => {
-                  const master = getCharacterMaster(char.masterId)
-                  const skillLv = char[SKILL_KEY_MAP[facility]]
-                  return (
-                    <button
-                      key={char.id}
-                      onClick={() => handleAssign(char.id)}
-                      className="w-full flex items-center gap-3 bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-yellow-400 rounded-lg p-2 text-left transition-colors"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 shrink-0">
-                        {master?.name.slice(0, 1) ?? '?'}
-                      </div>
-                      <div>
-                        <div className="text-sm text-slate-100">{master?.name ?? char.masterId}</div>
-                        <div className="text-xs text-slate-400">{SKILL_LABEL[facility]}.{skillLv}</div>
-                      </div>
-                    </button>
-                  )
-                })
-              )}
-            </div>
-
-            <button
-              onClick={() => setAssigningSlot(null)}
-              className="mt-3 w-full bg-slate-700 hover:bg-slate-600 text-slate-300 py-2 rounded-lg text-sm"
-            >
-              キャンセル
-            </button>
           </div>
-        </div>
+
+          {/* Available characters */}
+          <div className="text-xs text-slate-400 mb-2">配置可能なキャラクター</div>
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {availableChars.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">配置可能なキャラクターがいません</p>
+            ) : (
+              availableChars.map((char) => {
+                const master = getCharacterMaster(char.masterId)
+                const skillLv = char[SKILL_KEY_MAP[facility]]
+                return (
+                  <button
+                    key={char.id}
+                    onClick={() => handleAssign(char.id)}
+                    className="w-full flex items-center gap-3 bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-yellow-400 rounded-lg p-2 text-left transition-colors"
+                  >
+                    <CharacterAvatar masterId={char.masterId} size="xs" />
+                    <div>
+                      <div className="text-sm text-slate-100">{master?.name ?? char.masterId}</div>
+                      <div className="text-xs text-slate-400">{SKILL_LABEL[facility]}.{skillLv}</div>
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </div>
+
+          <button
+            onClick={() => setAssigningSlot(null)}
+            className="mt-3 w-full bg-slate-700 hover:bg-slate-600 text-slate-300 py-2 rounded-lg text-sm"
+          >
+            キャンセル
+          </button>
+        </Modal>
       )}
     </div>
   )

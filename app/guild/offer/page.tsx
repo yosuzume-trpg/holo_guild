@@ -9,6 +9,7 @@ import { useDungeonStore } from '@/store/dungeonStore'
 import {
   GUARANTEE_THRESHOLD, RECRUIT_BASE_COST, RECRUIT_COST_STEP, RECRUIT_STEP_COUNT,
 } from '@/data/constants'
+import ProgressBar from '@/app/_components/ui/ProgressBar'
 
 const TENDENCY_LABEL: Record<string, string> = {
   standard: '標準',
@@ -146,11 +147,8 @@ export default function OfferPage() {
         </div>
 
         {/* Progress bar */}
-        <div className="w-full h-1.5 bg-slate-700 rounded-full mb-4">
-          <div
-            className="h-full bg-yellow-400 rounded-full transition-all"
-            style={{ width: `${Math.min((points / GUARANTEE_THRESHOLD) * 100, 100)}%` }}
-          />
+        <div className="mb-4">
+          <ProgressBar pct={(points / GUARANTEE_THRESHOLD) * 100} color="bg-yellow-400" />
         </div>
 
         {/* Guarantee available */}

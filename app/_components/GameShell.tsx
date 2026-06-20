@@ -7,7 +7,7 @@ import Header from './Header'
 import TabNav from './TabNav'
 import SetupScreen from './SetupScreen'
 import { useGameStore } from '@/store/gameStore'
-import { CYCLE_DURATION_MS, PROD_STAR_BONUS_PER_RANK, PROD_CHAR_LEVEL_BONUS, PROD_DL_BONUS_PER_LEVEL } from '@/data/constants'
+import { CYCLE_DURATION_MS, PROD_STAR_BONUS_PER_RANK, PROD_CHAR_LEVEL_BONUS, PROD_DL_BONUS_PER_LEVEL, CRAFT_CHAR_LEVEL_BONUS, MERCHANT_CHAR_LEVEL_BONUS } from '@/data/constants'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
@@ -166,7 +166,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       if (asgn?.type === 'craft') {
         const recipe = getRecipe(asgn.recipeId)
         if (!recipe) continue
-        const charBonus = (char.craftLevel - 1) * 0.01
+        const charBonus = (char.craftLevel - 1) * CRAFT_CHAR_LEVEL_BONUS
         const rate = 1 * (1 + getResearchBonus('craft') + charBonus)
         const key = `craft:${char.id}`
         frac[key] = (frac[key] ?? 0) + rate * elapsedMin
@@ -188,7 +188,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
         const recipeDef = RECIPES.find((r) => r.id === asgn.sellMaterialId)
         const price = matDef?.price ?? recipeDef?.sellPrice
         if (price === undefined) continue
-        const charBonus = (char.merchantLevel - 1) * 0.01
+        const charBonus = (char.merchantLevel - 1) * MERCHANT_CHAR_LEVEL_BONUS
         const rate = 1 * (1 + getResearchBonus('merchant') + charBonus)
         const key = `merchant:${char.id}`
         frac[key] = (frac[key] ?? 0) + rate * elapsedMin

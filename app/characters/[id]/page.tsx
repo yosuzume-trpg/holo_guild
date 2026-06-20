@@ -9,9 +9,10 @@ import { getCharacterMaster } from '@/data/characters'
 import { getEquipment, EQUIPMENT_MASTERS } from '@/data/equipment'
 import type { EquipmentSlot } from '@/types/game'
 import {
-  COMBAT_STAR_BONUS_PER_RANK, EQUIP_WEAPON_ARMOR_STAR_BONUS, EQUIP_ACCESSORY_STAR_BONUS,
   STAR_GOLD_COST_FACTOR, AFFECTION_POINTS_PER_LEVEL, AFFECTION_GAIN_MIN, AFFECTION_GAIN_RANGE,
 } from '@/data/constants'
+import { calcCharacterStats, calcMaxHp } from '@/utils/characterStats'
+import ProgressBar from '@/app/_components/ui/ProgressBar'
 
 const TENDENCY_LABEL: Record<string, string> = {
   standard: '標準',
@@ -66,40 +67,11 @@ export default function CharacterDetailPage({
   }
 
   const master   = getCharacterMaster(char.masterId)
-  const maxHp    = char.stats.hp * char.battleLevel
+  const maxHp    = calcMaxHp(char, equipment)
   const hpPct    = Math.round((char.currentHp / maxHp) * 100)
   const affPct   = Math.round((char.affectionPoints / (char.affectionLevel * AFFECTION_POINTS_PER_LEVEL)) * 100)
 
-  const starBonus = (char.starRank - 1) * COMBAT_STAR_BONUS_PER_RANK
-  const effStats = (() => {
-    let atkM = 1 + starBonus, defM = 1 + starBonus, magM = 1 + starBonus
-    let mdefM = 1 + starBonus, hpM = 1 + starBonus, spdM = 1 + starBonus
-    for (const slot of ['weapon', 'armor', 'accessory'] as const) {
-      const inst = equipment.find((e) => e.instanceId === char.equipment[slot])
-      const master = inst ? getEquipment(inst.masterId) : null
-      if (!master || !inst) continue
-      const s = inst.starRank
-      const scale = (base: number) => {
-        if (base === 0) return 0
-        return slot === 'accessory'
-          ? (base + EQUIP_ACCESSORY_STAR_BONUS    * (s - 1)) / 100
-          : (base + EQUIP_WEAPON_ARMOR_STAR_BONUS * (s - 1)) / 100
-      }
-      atkM  += scale(master.effects.atkPercent  ?? 0)
-      defM  += scale(master.effects.defPercent  ?? 0)
-      magM  += scale(master.effects.magPercent  ?? 0)
-      mdefM += scale(master.effects.mdefPercent ?? 0)
-      hpM   += scale(master.effects.hpPercent   ?? 0)
-      spdM  += scale(master.effects.spdPercent  ?? 0)
-    }
-    const bl = char.battleLevel
-    const b = { hp: char.stats.hp * bl, atk: char.stats.atk * bl, def: char.stats.def * bl,
-                mag: char.stats.mag * bl, mdef: char.stats.mdef * bl, spd: char.stats.spd * bl }
-    return {
-      hp: Math.floor(b.hp * hpM), atk: Math.floor(b.atk * atkM), def: Math.floor(b.def * defM),
-      mag: Math.floor(b.mag * magM), mdef: Math.floor(b.mdef * mdefM), spd: Math.floor(b.spd * spdM),
-    }
-  })()
+  const effStats = calcCharacterStats(char, equipment).total
 
   const equippedItems = {
     weapon:    char.equipment.weapon    ? equipment.find((e) => e.instanceId === char.equipment.weapon)    : null,
@@ -157,12 +129,12 @@ export default function CharacterDetailPage({
           <span className="text-slate-400">HP</span>
           <span className="text-slate-200">{char.currentHp} / {maxHp}</span>
         </div>
-        <div className="w-full h-2 bg-slate-700 rounded-full">
-          <div
-            className={`h-full rounded-full ${hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-yellow-500' : 'bg-red-500'}`}
-            style={{ width: `${hpPct}%` }}
-          />
-        </div>
+        <ProgressBar
+          pct={hpPct}
+          heightClass="h-2"
+          color={hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-yellow-500' : 'bg-red-500'}
+          barClassName=""
+        />
       </div>
 
       {/* Stats */}
@@ -310,11 +282,8 @@ export default function CharacterDetailPage({
           <span className="text-slate-400">親愛度 Lv.{char.affectionLevel}</span>
           <span className="text-slate-200">{char.affectionPoints} / {char.affectionLevel * AFFECTION_POINTS_PER_LEVEL}</span>
         </div>
-        <div className="w-full h-1.5 bg-slate-700 rounded-full mb-2">
-          <div
-            className="h-full bg-pink-500 rounded-full"
-            style={{ width: `${affPct}%` }}
-          />
+        <div className="mb-2">
+          <ProgressBar pct={affPct} color="bg-pink-500" barClassName="" />
         </div>
         <button
           onClick={() => socialize(char.id)}

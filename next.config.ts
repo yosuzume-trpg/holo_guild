@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  basePath: '/holo-guild',
+  basePath: '/holo_guild',
 };
 
 export default nextConfig;

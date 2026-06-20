@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { CharacterAssignment, CharacterInstance, CharacterStats, EquipmentSlot, Tendency } from '@/types/game'
 import { useGameStore } from './gameStore'
+import { useInventoryStore } from './inventoryStore'
+import { calcMaxHp } from '@/utils/characterStats'
 import {
   CHAR_BASE_STATS, CHAR_STAT_VARIANCE,
   EXP_PER_LEVEL,
@@ -144,7 +146,8 @@ export const useCharacterStore = create<CharacterState>()(
           const newLevel = Math.min(expToLevel(newExp), maxLevel)
           const update: Partial<CharacterInstance> = { battleExp: newExp, battleLevel: newLevel }
           if (newLevel > char.battleLevel) {
-            update.currentHp = char.stats.hp * newLevel
+            // レベルアップで全回復。HP上限は装備等を含めた最大HPに合わせる
+            update.currentHp = calcMaxHp({ ...char, battleLevel: newLevel }, useInventoryStore.getState().equipment)
           }
           return { characters: updateChar(s.characters, id, update) }
         }),
