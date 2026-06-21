@@ -6,6 +6,7 @@ import type { CharacterMaster, RegionId } from '@/types/game'
 import { useGameStore } from '@/store/gameStore'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
+import CharacterAvatar from '@/app/_components/ui/CharacterAvatar'
 
 export default function SetupScreen() {
   const [step, setStep] = useState<'region' | 'character' | 'confirm'>('region')
@@ -94,9 +95,7 @@ export default function SetupScreen() {
                   onClick={() => handleSelectChar(char)}
                   className="bg-surface hover:bg-surface-2 border border-line hover:border-accent-strong rounded-lg p-3 text-left transition-colors"
                 >
-                  <div className="w-12 h-12 rounded-full bg-surface-3 flex items-center justify-center text-lg font-bold text-ink mb-2 mx-auto">
-                    {char.name.slice(0, 1)}
-                  </div>
+                  <CharacterAvatar masterId={char.id} size="lg" className="mb-2 mx-auto" />
                   <div className="text-sm font-semibold text-center text-ink truncate">
                     {char.name}
                   </div>
@@ -119,9 +118,7 @@ export default function SetupScreen() {
             </div>
 
             <div className="bg-surface border border-line rounded-xl p-5 mb-6">
-              <div className="w-20 h-20 rounded-full bg-surface-3 flex items-center justify-center text-3xl font-bold text-ink mx-auto mb-3">
-                {selectedChar.name.slice(0, 1)}
-              </div>
+              <CharacterAvatar masterId={selectedChar.id} size="xl" className="mx-auto mb-3" />
               <div className="text-center">
                 <div className="text-xl font-bold text-ink mb-2">
                   {selectedChar.name}

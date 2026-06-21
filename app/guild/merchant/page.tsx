@@ -13,6 +13,7 @@ import { useManualProductionStore } from '@/store/manualProductionStore'
 import FacilityStatsBox from '@/app/_components/facility/FacilityStatsBox'
 import AssignedSlotList from '@/app/_components/facility/AssignedSlotList'
 import Modal from '@/app/_components/ui/Modal'
+import CharacterAvatar from '@/app/_components/ui/CharacterAvatar'
 
 const SELL_CANDIDATES = [
   ...MATERIALS.filter((m) => m.facility !== 'dungeon').map((m) => ({
@@ -189,14 +190,29 @@ export default function MerchantPage() {
             <div className="text-xs text-ink-muted mb-1">キャラクター</div>
             {editing ? (
               <div className="text-sm text-ink px-2 py-1.5">{editMaster?.name ?? editCharId} (商人Lv.{editChar?.merchantLevel})</div>
+            ) : availableChars.length === 0 ? (
+              <p className="text-sm text-ink-subtle text-center py-4">配置可能なキャラクターがいません</p>
             ) : (
-              <select value={pickCharId} onChange={(e) => setPickCharId(e.target.value)}
-                className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink">
+              <div className="max-h-44 overflow-y-auto grid grid-cols-3 gap-2">
                 {availableChars.map((c) => {
                   const m = getCharacterMaster(c.masterId)
-                  return <option key={c.id} value={c.id}>{m?.name ?? c.masterId} (商人Lv.{c.merchantLevel})</option>
+                  const sel = pickCharId === c.id
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setPickCharId(c.id)}
+                      className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-colors ${
+                        sel ? 'border-accent-strong bg-surface-2' : 'border-line hover:border-accent-strong'
+                      }`}
+                    >
+                      <CharacterAvatar masterId={c.masterId} size="lg" />
+                      <div className="text-[10px] text-ink leading-tight text-center w-full truncate">{m?.name ?? c.masterId}</div>
+                      <div className="text-[10px] text-ink-muted">Lv.{c.merchantLevel}</div>
+                    </button>
+                  )
                 })}
-              </select>
+              </div>
             )}
           </div>
           <div>

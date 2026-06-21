@@ -13,6 +13,7 @@ import {
 } from '@/data/constants'
 import { calcCharacterStats, calcMaxHp } from '@/utils/characterStats'
 import ProgressBar from '@/app/_components/ui/ProgressBar'
+import CharacterAvatar from '@/app/_components/ui/CharacterAvatar'
 
 const TENDENCY_LABEL: Record<string, string> = {
   standard: '標準',
@@ -89,9 +90,7 @@ export default function CharacterDetailPage({
       {/* Header */}
       <div className="bg-surface border border-line rounded-xl p-4 mb-4 text-center">
         <div className="relative inline-block">
-          <div className="w-24 h-24 rounded-full bg-surface-3 flex items-center justify-center text-4xl font-bold text-ink mx-auto mb-2">
-            {master?.name.slice(0, 1) ?? '?'}
-          </div>
+          <CharacterAvatar masterId={char.masterId} size="2xl" className="mx-auto mb-2" />
           <span className="absolute top-0 right-0 bg-accent text-ink text-xs font-bold px-1.5 py-0.5 rounded">
             ★{char.starRank}
           </span>

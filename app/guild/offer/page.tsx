@@ -10,6 +10,7 @@ import {
   GUARANTEE_THRESHOLD, RECRUIT_BASE_COST, RECRUIT_COST_STEP, RECRUIT_STEP_COUNT,
 } from '@/data/constants'
 import ProgressBar from '@/app/_components/ui/ProgressBar'
+import CharacterAvatar from '@/app/_components/ui/CharacterAvatar'
 
 const TENDENCY_LABEL: Record<string, string> = {
   standard: '標準',
@@ -186,9 +187,13 @@ export default function OfferPage() {
                     : 'bg-surface border-line opacity-50'
                 }`}
               >
-                <div className="w-10 h-10 rounded-full bg-surface-3 flex items-center justify-center text-sm font-bold text-ink mx-auto mb-1">
-                  {char.name.slice(0, 1)}
-                </div>
+                {owned ? (
+                  <CharacterAvatar masterId={char.id} size="md" className="mx-auto mb-1" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-surface-3 flex items-center justify-center text-sm font-bold text-ink-subtle mx-auto mb-1">
+                    ?
+                  </div>
+                )}
                 <div className="text-xs text-ink leading-tight truncate">
                   {owned ? char.name : '???'}
                 </div>
@@ -216,9 +221,7 @@ export default function OfferPage() {
             <div className="text-xs text-ink-muted mb-1">
               {pullResult.isNew ? '新しいメンバーが加わった！' : '証書を入手！'}
             </div>
-            <div className="w-20 h-20 rounded-full bg-surface-3 flex items-center justify-center text-3xl font-bold text-ink mx-auto my-3">
-              {pullResult.char.name.slice(0, 1)}
-            </div>
+            <CharacterAvatar masterId={pullResult.char.id} size="xl" className="mx-auto my-3" />
             <div className="text-lg font-bold text-ink mb-1">
               {pullResult.char.name}
             </div>
@@ -265,9 +268,7 @@ export default function OfferPage() {
                       : 'bg-surface-2 hover:bg-surface-3 border-line-strong hover:border-accent-strong'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-surface-3 flex items-center justify-center text-sm font-bold text-ink mx-auto mb-1">
-                    {char.name.slice(0, 1)}
-                  </div>
+                  <CharacterAvatar masterId={char.id} size="md" className="mx-auto mb-1" />
                   <div className="text-xs text-ink leading-tight">{char.name}</div>
                   {owned && <div className="text-xs text-accent-strong mt-0.5">証書×5</div>}
                 </button>

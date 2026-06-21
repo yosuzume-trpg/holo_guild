@@ -8,6 +8,7 @@ import { useGameStore } from "@/store/gameStore";
 import { useCharacterStore } from "@/store/characterStore";
 import { useDungeonStore } from "@/store/dungeonStore";
 import { useFacilityStore } from "@/store/facilityStore";
+import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 import {
     BATTLE_GOLD_BOSS_FACTOR,
     GR_FACILITY_LEVEL_CAP,
@@ -161,9 +162,7 @@ export default function DungeonPage() {
                                                 key={char.id}
                                                 className="bg-surface border border-line rounded-lg p-3 flex items-center gap-3"
                                             >
-                                                <div className="w-9 h-9 rounded-full bg-surface-3 flex items-center justify-center text-sm font-bold text-ink shrink-0">
-                                                    {master?.name.slice(0, 1) ?? "?"}
-                                                </div>
+                                                <CharacterAvatar masterId={char.masterId} size="sm" />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-sm font-semibold text-ink truncate">
                                                         {master?.name}
@@ -173,6 +172,19 @@ export default function DungeonPage() {
                                                         {mat?.name ?? asgn.materialId}
                                                     </div>
                                                 </div>
+                                                <AutoAssignButton
+                                                    editChar={char}
+                                                    availableChars={availableChars}
+                                                    maxCleared={maxCleared}
+                                                    availableMats={availableMats}
+                                                    onAssign={(charId, level, materialId) =>
+                                                        setAssignment(charId, {
+                                                            type: "dungeon",
+                                                            level,
+                                                            materialId,
+                                                        })
+                                                    }
+                                                />
                                                 <button
                                                     onClick={() => setAssignment(char.id, null)}
                                                     className="text-xs text-ink-subtle hover:text-danger shrink-0"
@@ -231,21 +243,44 @@ function AutoAssignButton({
     maxCleared,
     availableMats,
     onAssign,
+    editChar,
 }: {
     availableChars: ReturnType<typeof useCharacterStore.getState>["characters"];
     maxCleared: number;
     availableMats: ReturnType<typeof getDungeonMaterials>;
     onAssign: (charId: string, level: number, materialId: string) => void;
+    /** 指定すると「変更」モードになり、そのキャラのDL・素材を解除せず変更できる */
+    editChar?: ReturnType<typeof useCharacterStore.getState>["characters"][number];
 }) {
+    const isEdit = !!editChar;
     const [open, setOpen] = useState(false);
-    const [charId, setCharId] = useState(availableChars[0]?.id ?? "");
+    const [charId, setCharId] = useState(editChar?.id ?? availableChars[0]?.id ?? "");
     const [level, setLevel] = useState(maxCleared);
     const [matId, setMatId] = useState(availableMats[0]?.id ?? "");
 
+    // モーダルを開くたびに初期値をリセット（変更時は現在の配置内容を反映）
+    function openModal() {
+        if (editChar) {
+            const a = editChar.assignment as Extract<
+                typeof editChar.assignment,
+                { type: "dungeon" }
+            >;
+            setCharId(editChar.id);
+            setLevel(a.level);
+            setMatId(a.materialId);
+        } else {
+            setCharId(availableChars[0]?.id ?? "");
+            setLevel(maxCleared);
+            setMatId(availableMats[0]?.id ?? "");
+        }
+        setOpen(true);
+    }
+
     // 配置できるのは「そのDL以上の戦闘レベル」のキャラのみ。
     // → あるキャラが周回できる最大DL = min(クリア済み最大DL, そのキャラの戦闘レベル)
-    const selectedChar = availableChars.find((c) => c.id === charId);
-    const battleLevel = selectedChar?.battleLevel ?? 1;
+    const activeChar = editChar ?? availableChars.find((c) => c.id === charId);
+    const activeMaster = activeChar ? getCharacterMaster(activeChar.masterId) : null;
+    const battleLevel = activeChar?.battleLevel ?? 1;
     const maxAssignableDl = Math.max(1, Math.min(maxCleared, battleLevel));
     const effectiveLevel = Math.min(Math.max(level, 1), maxAssignableDl);
 
@@ -256,12 +291,21 @@ function AutoAssignButton({
 
     return (
         <>
-            <button
-                onClick={() => setOpen(true)}
-                className="w-full bg-surface border border-dashed border-line hover:border-accent-strong rounded-lg p-3 text-ink-subtle hover:text-ink text-sm transition-colors text-center"
-            >
-                ＋ キャラクターを配置
-            </button>
+            {isEdit ? (
+                <button
+                    onClick={openModal}
+                    className="text-xs bg-surface-2 hover:bg-surface-3 border border-line-strong text-ink px-2 py-1 rounded transition-colors shrink-0"
+                >
+                    変更
+                </button>
+            ) : (
+                <button
+                    onClick={openModal}
+                    className="w-full bg-surface border border-dashed border-line hover:border-accent-strong rounded-lg p-3 text-ink-subtle hover:text-ink text-sm transition-colors text-center"
+                >
+                    ＋ キャラクターを配置
+                </button>
+            )}
             {open && (
                 <div
                     className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
@@ -271,23 +315,47 @@ function AutoAssignButton({
                         className="bg-surface border border-line rounded-2xl p-4 w-80 space-y-3"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="font-bold text-ink">自動周回設定</div>
+                        <div className="font-bold text-ink">
+                            {isEdit ? "DL・素材の変更" : "自動周回設定"}
+                        </div>
                         <div>
                             <div className="text-xs text-ink-muted mb-1">キャラクター</div>
-                            <select
-                                value={charId}
-                                onChange={(e) => setCharId(e.target.value)}
-                                className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink"
-                            >
-                                {availableChars.map((c) => {
-                                    const m = getCharacterMaster(c.masterId);
-                                    return (
-                                        <option key={c.id} value={c.id}>
-                                            {m?.name ?? c.masterId} (戦闘Lv.{c.battleLevel})
-                                        </option>
-                                    );
-                                })}
-                            </select>
+                            {isEdit ? (
+                                <div className="text-sm text-ink px-2 py-1.5">
+                                    {activeMaster?.name ?? activeChar?.masterId} (戦闘Lv.{battleLevel})
+                                </div>
+                            ) : availableChars.length === 0 ? (
+                                <p className="text-sm text-ink-subtle text-center py-4">
+                                    配置可能なキャラクターがいません
+                                </p>
+                            ) : (
+                                <div className="max-h-44 overflow-y-auto grid grid-cols-3 gap-2">
+                                    {availableChars.map((c) => {
+                                        const m = getCharacterMaster(c.masterId);
+                                        const sel = charId === c.id;
+                                        return (
+                                            <button
+                                                key={c.id}
+                                                type="button"
+                                                onClick={() => setCharId(c.id)}
+                                                className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-colors ${
+                                                    sel
+                                                        ? "border-accent-strong bg-surface-2"
+                                                        : "border-line hover:border-accent-strong"
+                                                }`}
+                                            >
+                                                <CharacterAvatar masterId={c.masterId} size="lg" />
+                                                <div className="text-[10px] text-ink leading-tight text-center w-full truncate">
+                                                    {m?.name ?? c.masterId}
+                                                </div>
+                                                <div className="text-[10px] text-ink-muted">
+                                                    Lv.{c.battleLevel}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                         <div>
                             <div className="text-xs text-ink-muted mb-1">
@@ -337,9 +405,10 @@ function AutoAssignButton({
                                         setOpen(false);
                                     }
                                 }}
-                                className="flex-1 bg-accent text-ink font-bold py-2 rounded text-sm"
+                                disabled={!charId || !effectiveMatId}
+                                className="flex-1 bg-accent hover:bg-accent-strong disabled:opacity-40 text-ink font-bold py-2 rounded text-sm"
                             >
-                                配置
+                                {isEdit ? "変更" : "配置"}
                             </button>
                         </div>
                     </div>

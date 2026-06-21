@@ -5,6 +5,7 @@ import { useCharacterStore } from '@/store/characterStore'
 import { useGameStore } from '@/store/gameStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { getCharacterMaster } from '@/data/characters'
+import CharacterPortrait from '@/app/_components/ui/CharacterPortrait'
 
 export default function HomePage() {
   const characters   = useCharacterStore((s) => s.characters)
@@ -76,8 +77,8 @@ export default function HomePage() {
               const master = getCharacterMaster(char.masterId)
               return (
                 <div key={char.id} className="shrink-0">
-                  <div className="w-16 h-16 rounded-full bg-surface-3 flex items-center justify-center text-2xl font-bold text-ink mx-auto mb-1">
-                    {master?.name.slice(0, 1) ?? '?'}
+                  <div className="relative w-16 h-20 rounded-lg overflow-hidden bg-surface-3 mx-auto mb-1">
+                    <CharacterPortrait masterId={char.masterId} />
                   </div>
                   <div className="text-xs text-ink text-center w-16 truncate">
                     {master?.name ?? char.masterId}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import CharacterPortrait from "@/app/_components/ui/CharacterPortrait";
 import { useCharacterStore } from "@/store/characterStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useGameStore } from "@/store/gameStore";
@@ -136,13 +136,7 @@ function CharacterCard({
         <div className="h-80 w-100 bg-surface border border-line rounded-xl overflow-hidden flex flex-row">
             {/* Portrait */}
             <div className="relative w-40 shrink-0 self-stretch block">
-                <Image
-                    src="/holo_guild/characters/default/portrait.png"
-                    alt={master?.name ?? char.masterId}
-                    fill
-                    priority
-                    className="object-cover object-top"
-                />
+                <CharacterPortrait masterId={char.masterId} priority />
             </div>
 
             {/* Info panel */}

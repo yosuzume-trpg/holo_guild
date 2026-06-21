@@ -6,6 +6,7 @@ import { REGIONS, getRegionCharacters } from '@/data/characters'
 import type { RegionId } from '@/types/game'
 import { useCharacterStore } from '@/store/characterStore'
 import { useGameStore } from '@/store/gameStore'
+import CharacterAvatar from '@/app/_components/ui/CharacterAvatar'
 
 const TENDENCY_COLOR: Record<string, string> = {
   standard: 'bg-surface-3',
@@ -84,9 +85,7 @@ export default function RosterPage() {
                     href={`/characters/${charInst.id}`}
                     className="block bg-surface-2 border border-line hover:border-accent-strong rounded-lg p-2 text-center transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-full bg-surface-3 flex items-center justify-center text-sm font-bold text-ink mx-auto mb-1">
-                      {char.name.slice(0, 1)}
-                    </div>
+                    <CharacterAvatar masterId={char.id} size="md" className="mx-auto mb-1" />
                     <div className="text-xs text-ink leading-tight truncate">
                       {char.name}
                     </div>
