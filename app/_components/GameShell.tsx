@@ -12,6 +12,7 @@ import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
 import { useFacilityStore } from '@/store/facilityStore'
+import { useManualProductionStore } from '@/store/manualProductionStore'
 import { getMaterial, MATERIALS } from '@/data/materials'
 import { getEquipment } from '@/data/equipment'
 import { RECIPES, getRecipe } from '@/data/recipes'
@@ -61,6 +62,8 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
     const offlineMin = useGameStore.getState().getOfflineElapsed() / 60_000
     applyProduction(offlineMin)
     applyGuildWork(offlineMin)
+    // 手動生産タスクの完了回収（オフライン・リロード後も含む。生産ページ外でも完了する）
+    useManualProductionStore.getState().collectCompleted()
     lastTickRef.current = Date.now()
 
     const id = setInterval(() => {
@@ -69,6 +72,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       lastTickRef.current = now
       applyProduction(elapsedMin)
       applyGuildWork(elapsedMin)
+      useManualProductionStore.getState().collectCompleted()
     }, 10_000)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps

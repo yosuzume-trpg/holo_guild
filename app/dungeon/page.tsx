@@ -7,14 +7,25 @@ import { getCharacterMaster } from "@/data/characters";
 import { useGameStore } from "@/store/gameStore";
 import { useCharacterStore } from "@/store/characterStore";
 import { useDungeonStore } from "@/store/dungeonStore";
-import { BATTLE_GOLD_BOSS_FACTOR } from "@/data/constants";
+import { useFacilityStore } from "@/store/facilityStore";
+import {
+    BATTLE_GOLD_BOSS_FACTOR,
+    GR_FACILITY_LEVEL_CAP,
+    PROD_DL_BONUS_PER_LEVEL,
+} from "@/data/constants";
 
 export default function DungeonPage() {
     const guildRank = useGameStore((s) => s.guildRank);
+    const gold = useGameStore((s) => s.gold);
+    const spendGold = useGameStore((s) => s.spendGold);
     const characters = useCharacterStore((s) => s.characters);
     const setAssignment = useCharacterStore((s) => s.setAssignment);
     const maxCleared = useDungeonStore((s) => s.maxClearedLevel);
     const clearedLevels = useDungeonStore((s) => s.clearedLevels);
+    const dungeonFacility = useFacilityStore((s) => s.dungeon);
+    const getSlotCount = useFacilityStore((s) => s.getSlotCount);
+    const getUpgradeCost = useFacilityStore((s) => s.getUpgradeCost);
+    const expandDungeon = useFacilityStore((s) => s.expandDungeon);
 
     const [tab, setTab] = useState<"challenge" | "auto">("challenge");
 
@@ -26,6 +37,13 @@ export default function DungeonPage() {
     // Auto-grind: characters assigned to dungeon
     const autoChars = characters.filter((c) => c.assignment?.type === "dungeon");
     const availableChars = characters.filter((c) => c.assignment === null);
+
+    // 自動周回の配置枠（初期3・拡張で+1・上限GR×10）
+    const slotCount = getSlotCount("dungeon");
+    const maxExpansion = guildRank * GR_FACILITY_LEVEL_CAP;
+    const expandCost = getUpgradeCost(dungeonFacility.expansionLevel + 1);
+    const expandAtMax = dungeonFacility.expansionLevel >= maxExpansion;
+    const slotsFull = autoChars.length >= slotCount;
 
     // Available dungeon materials based on cleared level
     const availableMats = getDungeonMaterials(maxCleared);
@@ -101,8 +119,34 @@ export default function DungeonPage() {
 
                         {maxCleared > 0 && (
                             <>
+                                {/* 配置枠の拡張 */}
+                                <div className="bg-surface rounded-lg p-3 text-sm space-y-1">
+                                    <div className="flex justify-between text-ink">
+                                        <span>枠数</span>
+                                        <span className="font-semibold">
+                                            {slotCount}{" "}
+                                            <span className="text-xs text-ink-subtle">
+                                                (上限 GR×10={maxExpansion})
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
+                                        <button
+                                            onClick={() => {
+                                                if (spendGold(expandCost)) expandDungeon();
+                                            }}
+                                            disabled={gold < expandCost || expandAtMax}
+                                            className="flex-1 text-xs bg-surface-2 hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed border border-line-strong rounded py-1.5 transition-colors"
+                                        >
+                                            {expandAtMax
+                                                ? "拡張上限"
+                                                : `拡張 (${expandCost.toLocaleString()}G)`}
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="text-sm text-ink-muted mb-1">
-                                    配置中のキャラクター ({autoChars.length}人)
+                                    配置中のキャラクター ({autoChars.length}/{slotCount}人)
                                 </div>
                                 <div className="space-y-2">
                                     {autoChars.map((char) => {
@@ -139,7 +183,11 @@ export default function DungeonPage() {
                                         );
                                     })}
 
-                                    {availableChars.length > 0 && (
+                                    {slotsFull ? (
+                                        <div className="w-full bg-surface border border-dashed border-line rounded-lg p-3 text-ink-subtle text-sm text-center">
+                                            配置枠が上限です（拡張で増やせます）
+                                        </div>
+                                    ) : availableChars.length > 0 ? (
                                         <AutoAssignButton
                                             availableChars={availableChars}
                                             maxCleared={maxCleared}
@@ -152,7 +200,7 @@ export default function DungeonPage() {
                                                 })
                                             }
                                         />
-                                    )}
+                                    ) : null}
                                 </div>
 
                                 <div className="text-sm text-ink-muted">入手可能な素材</div>
@@ -194,8 +242,15 @@ function AutoAssignButton({
     const [level, setLevel] = useState(maxCleared);
     const [matId, setMatId] = useState(availableMats[0]?.id ?? "");
 
+    // 配置できるのは「そのDL以上の戦闘レベル」のキャラのみ。
+    // → あるキャラが周回できる最大DL = min(クリア済み最大DL, そのキャラの戦闘レベル)
+    const selectedChar = availableChars.find((c) => c.id === charId);
+    const battleLevel = selectedChar?.battleLevel ?? 1;
+    const maxAssignableDl = Math.max(1, Math.min(maxCleared, battleLevel));
+    const effectiveLevel = Math.min(Math.max(level, 1), maxAssignableDl);
+
     // 収集できる素材は配置するDLのDL帯に従う
-    const levelMats = getDungeonMaterials(level);
+    const levelMats = getDungeonMaterials(effectiveLevel);
     // 選択中の素材が現在のDL帯に無ければ先頭へ補正
     const effectiveMatId = levelMats.some((m) => m.id === matId) ? matId : (levelMats[0]?.id ?? "");
 
@@ -228,24 +283,30 @@ function AutoAssignButton({
                                     const m = getCharacterMaster(c.masterId);
                                     return (
                                         <option key={c.id} value={c.id}>
-                                            {m?.name ?? c.masterId}
+                                            {m?.name ?? c.masterId} (戦闘Lv.{c.battleLevel})
                                         </option>
                                     );
                                 })}
                             </select>
                         </div>
                         <div>
-                            <div className="text-xs text-ink-muted mb-1">ダンジョンレベル</div>
+                            <div className="text-xs text-ink-muted mb-1">
+                                ダンジョンレベル（戦闘Lv.{battleLevel} まで配置可）
+                            </div>
                             <select
-                                value={level}
+                                value={effectiveLevel}
                                 onChange={(e) => setLevel(Number(e.target.value))}
                                 className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink"
                             >
-                                {Array.from({ length: maxCleared }, (_, i) => i + 1).map((lv) => (
-                                    <option key={lv} value={lv}>
-                                        DL {lv} (+{(lv - 1) * 5}%ボーナス)
-                                    </option>
-                                ))}
+                                {Array.from({ length: maxAssignableDl }, (_, i) => i + 1).map(
+                                    (lv) => (
+                                        <option key={lv} value={lv}>
+                                            DL {lv} (+
+                                            {Math.round((lv - 1) * PROD_DL_BONUS_PER_LEVEL * 100)}
+                                            %ボーナス)
+                                        </option>
+                                    ),
+                                )}
                             </select>
                         </div>
                         <div>
@@ -271,8 +332,8 @@ function AutoAssignButton({
                             </button>
                             <button
                                 onClick={() => {
-                                    if (effectiveMatId) {
-                                        onAssign(charId, level, effectiveMatId);
+                                    if (charId && effectiveMatId) {
+                                        onAssign(charId, effectiveLevel, effectiveMatId);
                                         setOpen(false);
                                     }
                                 }}

@@ -3,7 +3,7 @@
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { CharacterInstance, EnemyInstance, Buff, StageType, Attribute } from "@/types/game";
-import { getCharacterMaster, REGIONS } from "@/data/characters";
+import { getCharacterMaster } from "@/data/characters";
 import { getEquipment, EQUIPMENT_MASTERS } from "@/data/equipment";
 import { getDungeonMaterials, getMaterial } from "@/data/materials";
 import { DUNGEON_ITEMS, getRecipe } from "@/data/recipes";
@@ -200,10 +200,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     const router = useRouter();
 
     const addGold = useGameStore((s) => s.addGold);
-    const upgradeGuildRank = useGameStore((s) => s.upgradeGuildRank);
-    const unlockRegion = useGameStore((s) => s.unlockRegion);
     const guildRank = useGameStore((s) => s.guildRank);
-    const unlockedRegions = useGameStore((s) => s.unlockedRegions);
     const characters = useCharacterStore((s) => s.characters);
     const gainBattleExp = useCharacterStore((s) => s.gainBattleExp);
     const updateCurrentHp = useCharacterStore((s) => s.updateCurrentHp);
@@ -223,8 +220,6 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     );
     const [selectedItem, setSelectedItem] = useState("");
     const [result, setResult] = useState<"clear" | "wipe" | "retreat" | null>(null);
-    const [grUpgraded, setGrUpgraded] = useState(false);
-    const [regionPicked, setRegionPicked] = useState(false);
     const [pendingBranch, setPendingBranch] = useState<{
         stage: number;
         options: [StageType, StageType];
@@ -399,7 +394,6 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             const master = getCharacterMaster(c.masterId);
             if (master) addRecruitPoints(master.region, 1);
         }
-        if (dl % 10 === 0 && dl / 10 === guildRank) setGrUpgraded(upgradeGuildRank());
         setActiveBattle(null);
         setResult("clear");
         return state;
@@ -735,9 +729,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
 
     // ─── Render: party select ─────────────────────────────────────────────
     if (!bs && result === null) {
-        const eligible = characters.filter(
-            (c) => c.assignment === null || c.assignment.type === "dungeon",
-        );
+        // 自動周回中など、何かに配置されているキャラはパーティーに選べない（未配置のみ）
+        const eligible = characters.filter((c) => c.assignment === null);
         return (
             <div className="p-4">
                 <div className="flex items-center gap-3 mb-4">
@@ -878,48 +871,13 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                         })}
                     </div>
                 )}
-                {result === "clear" && dl % 10 === 0 && (
+                {result === "clear" && dl % 10 === 0 && dl === guildRank * 10 && (
                     <div className="mb-4">
-                        {!grUpgraded && (
-                            <div className="rounded-xl p-3 text-sm font-semibold bg-surface border border-line text-ink-muted">
-                                ⚠️ GRアップには魔力結晶×{guildRank * GR_UPGRADE_MAT_COST} /
-                                古代歯車×{guildRank * GR_UPGRADE_MAT_COST} が必要です
-                            </div>
-                        )}
-                        {grUpgraded &&
-                            (() => {
-                                const lockable = REGIONS.filter(
-                                    (r) => !unlockedRegions.includes(r.id),
-                                );
-                                if (lockable.length === 0 || regionPicked) {
-                                    return (
-                                        <div className="rounded-xl p-3 text-sm font-semibold bg-surface-2 border border-accent-strong text-accent-strong">
-                                            🏆 ギルドランクが {guildRank} に上昇しました！
-                                        </div>
-                                    );
-                                }
-                                return (
-                                    <div className="bg-surface-2 border border-accent-strong rounded-xl p-3 space-y-2">
-                                        <div className="text-sm font-semibold text-accent-strong">
-                                            🏆 GR{guildRank} に上昇！解放する地域を1つ選んでください
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {lockable.map((r) => (
-                                                <button
-                                                    key={r.id}
-                                                    onClick={() => {
-                                                        unlockRegion(r.id);
-                                                        setRegionPicked(true);
-                                                    }}
-                                                    className="bg-accent hover:bg-accent-strong text-ink font-bold py-2 rounded text-sm transition-colors"
-                                                >
-                                                    {r.name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })()}
+                        <div className="rounded-xl p-3 text-sm font-semibold bg-surface-2 border border-accent-strong text-accent-strong">
+                            🏆 DL{dl} クリア！「ギルド → ランクアップ」で GR{guildRank + 1}{" "}
+                            に上昇できます（魔力結晶・古代歯車が各{guildRank * GR_UPGRADE_MAT_COST}
+                            個必要）
+                        </div>
                     </div>
                 )}
                 <button

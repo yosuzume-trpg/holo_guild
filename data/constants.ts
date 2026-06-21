@@ -174,14 +174,33 @@ export const PROD_STAR_BONUS_PER_RANK = 0.02;
 /** 生産速度のキャラクター施設レベルボーナス（+0.5%/レベル、Lv1を除く） */
 export const PROD_CHAR_LEVEL_BONUS = 0.005;
 
-/** ダンジョン自動周回の DL ボーナス（+5%/DL、DL1を除く） */
-export const PROD_DL_BONUS_PER_LEVEL = 0.05;
+/** ダンジョン自動周回の DL ボーナス（+1%/DL、DL1を除く） */
+export const PROD_DL_BONUS_PER_LEVEL = 0.01;
 
 /** 工芸の製作速度キャラクター工芸レベルボーナス（+1%/レベル、Lv1を除く） */
 export const CRAFT_CHAR_LEVEL_BONUS = 0.01;
 
 /** 商人の販売速度キャラクター商人レベルボーナス（+1%/レベル、Lv1を除く） */
 export const MERCHANT_CHAR_LEVEL_BONUS = 0.01;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 手動生産
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 手動生産1個あたりの所要時間: 100Gにつき何ミリ秒か（実価格基準） */
+export const MANUAL_PRODUCE_MS_PER_100G = 120000; // 1分で50G
+
+/** 手動生産1個あたりの最低所要時間（ミリ秒） */
+export const MANUAL_PRODUCE_MIN_MS = 500;
+
+/** 手動製作（工芸）1個あたりの所要時間: 完成品の売値100Gにつき何ミリ秒か（実価格基準） */
+export const MANUAL_CRAFT_MS_PER_100G = 120000;
+
+/** 手動製作（工芸）1個あたりの最低所要時間（ミリ秒） */
+export const MANUAL_CRAFT_MIN_MS = 500;
+
+/** 手動売却（商人）1個あたりの所要時間（ミリ秒）。金額によらず一律 */
+export const MANUAL_SELL_MS = 30000;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 貿易

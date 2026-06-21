@@ -1,14 +1,15 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ProductionFacilityId } from '@/types/game'
 import { MATERIALS_BY_FACILITY } from '@/data/materials'
 import { getCharacterMaster } from '@/data/characters'
-import { GR_FACILITY_LEVEL_CAP } from '@/data/constants'
+import { GR_FACILITY_LEVEL_CAP, MANUAL_PRODUCE_MS_PER_100G, MANUAL_PRODUCE_MIN_MS } from '@/data/constants'
 import { useGameStore } from '@/store/gameStore'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useFacilityStore } from '@/store/facilityStore'
+import { useManualProductionStore } from '@/store/manualProductionStore'
 import FacilityStatsBox from '@/app/_components/facility/FacilityStatsBox'
 import AssignedSlotList from '@/app/_components/facility/AssignedSlotList'
 import CharacterAvatar from '@/app/_components/ui/CharacterAvatar'
@@ -48,30 +49,41 @@ export default function ProductionFacilityPage({ facility }: Props) {
   const characters = useCharacterStore((s) => s.characters)
   const setAssignment = useCharacterStore((s) => s.setAssignment)
   const inventoryMaterials = useInventoryStore((s) => s.materials)
-  const addMaterial = useInventoryStore((s) => s.addMaterial)
   const facilityData = useFacilityStore((s) => s[facility])
   const getSlotCount = useFacilityStore((s) => s.getSlotCount)
   const getResearchBonus = useFacilityStore((s) => s.getResearchBonus)
   const getUpgradeCost = useFacilityStore((s) => s.getUpgradeCost)
   const expandProduction = useFacilityStore((s) => s.expandProduction)
   const researchProduction = useFacilityStore((s) => s.researchProduction)
+  // 手動生産タスクは永続ストアに保持（画面遷移・リロード・オフラインをまたいで継続）
+  const manualTasks = useManualProductionStore((s) => s.tasks)
+  const startTask = useManualProductionStore((s) => s.startTask)
+  const collectCompleted = useManualProductionStore((s) => s.collectCompleted)
+  const cancelTask = useManualProductionStore((s) => s.cancelTask)
 
   const [assigningSlot, setAssigningSlot] = useState<number | null>(null)
+  const [editCharId, setEditCharId] = useState<string | null>(null)
   const [selectedMaterial, setSelectedMaterial] = useState<string>(materials[0]?.id ?? '')
-  const manualFracRef = useRef<Record<string, number>>({})
+  const [, setTick] = useState(0)
 
   const maxLevel = guildRank * GR_FACILITY_LEVEL_CAP
 
-  function handleManualProduce(charId: string, matId: string, matPrice: number) {
-    const key = `${charId}:${matId}`
-    manualFracRef.current[key] = (manualFracRef.current[key] ?? 0) + 1 / matPrice
-    const whole = Math.floor(manualFracRef.current[key])
-    if (whole >= 1) {
-      // 手動生産では経験値は入らない（自動配置のみ加算）
-      addMaterial(matId, whole)
-      manualFracRef.current[key] -= whole
-    }
+  function startManualProduce(charId: string, matId: string, matPrice: number) {
+    if (manualTasks[charId]) return // 生産中はクリック不可
+    // matPrice は経済倍率適用後の実価格。100Gあたり MANUAL_PRODUCE_MS_PER_100G ミリ秒、最低 MANUAL_PRODUCE_MIN_MS。
+    const duration = Math.max(MANUAL_PRODUCE_MIN_MS, (matPrice / 100) * MANUAL_PRODUCE_MS_PER_100G)
+    startTask(charId, matId, duration)
   }
+
+  // 進捗バーのアニメーションと完了回収。タスクがある間だけ動かす。
+  useEffect(() => {
+    if (Object.keys(manualTasks).length === 0) return
+    const id = setInterval(() => {
+      collectCompleted()
+      setTick((x) => x + 1) // プログレスバー再描画
+    }, 100)
+    return () => clearInterval(id)
+  }, [manualTasks, collectCompleted])
 
   const slotCount    = getSlotCount(facility)
   const researchBonus = getResearchBonus(facility)
@@ -90,14 +102,39 @@ export default function ProductionFacilityPage({ facility }: Props) {
     assignedChars[i] ?? null
   )
 
+  const editing = editCharId !== null
+  const editChar = editing ? characters.find((c) => c.id === editCharId) : null
+  const editMaster = editChar ? getCharacterMaster(editChar.masterId) : null
+  const modalOpen = assigningSlot !== null || editing
+
   function handleAssign(charId: string) {
     if (assigningSlot === null) return
-    const matId = selectedMaterial
-    setAssignment(charId, { type: facility, materialId: matId })
+    setAssignment(charId, { type: facility, materialId: selectedMaterial })
     setAssigningSlot(null)
   }
 
+  function openEdit(char: typeof characters[number]) {
+    const asgn = char.assignment
+    const matId = asgn?.type === facility ? asgn.materialId : (materials[0]?.id ?? '')
+    setSelectedMaterial(matId)
+    setEditCharId(char.id)
+  }
+
+  function confirmEdit() {
+    if (!editCharId) return
+    // 生産素材が変わるので進行中の手動生産は破棄
+    cancelTask(editCharId)
+    setAssignment(editCharId, { type: facility, materialId: selectedMaterial })
+    setEditCharId(null)
+  }
+
+  function closeModal() {
+    setAssigningSlot(null)
+    setEditCharId(null)
+  }
+
   function handleUnassign(charId: string) {
+    cancelTask(charId)
     setAssignment(charId, null)
   }
 
@@ -147,13 +184,33 @@ export default function ProductionFacilityPage({ facility }: Props) {
           const matId = asgn?.type === facility ? asgn.materialId : ''
           const mat   = materials.find((m) => m.id === matId)
           if (!mat) return null
+          const task = manualTasks[char.id]
+          const progress = task ? Math.min(1, (Date.now() - task.start) / task.duration) : 0
           return (
-            <button
-              onClick={() => handleManualProduce(char.id, mat.id, mat.price)}
-              className="text-xs bg-surface-3 hover:bg-surface-3 border border-line-strong text-ink px-2 py-1 rounded transition-colors shrink-0"
-            >
-              手動
-            </button>
+            <>
+              <button
+                onClick={() => openEdit(char)}
+                className="text-xs bg-surface-2 hover:bg-surface-3 border border-line-strong text-ink px-2 py-1 rounded transition-colors shrink-0"
+              >
+                変更
+              </button>
+              {task ? (
+                <div className="relative w-14 text-center text-xs px-2 py-1 rounded border border-line-strong overflow-hidden shrink-0 text-ink">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-accent/40"
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                  <span className="relative">{Math.floor(progress * 100)}%</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => startManualProduce(char.id, mat.id, mat.price)}
+                  className="text-xs bg-surface-3 hover:bg-surface-3 border border-line-strong text-ink px-2 py-1 rounded transition-colors shrink-0"
+                >
+                  手動
+                </button>
+              )}
+            </>
           )
         }}
       />
@@ -176,10 +233,14 @@ export default function ProductionFacilityPage({ facility }: Props) {
         </div>
       </div>
 
-      {/* Assignment modal */}
-      {assigningSlot !== null && (
-        <Modal onClose={() => setAssigningSlot(null)} boxClassName="w-80 max-h-[80vh] flex flex-col">
-          <div className="text-base font-bold text-ink mb-3">配置するキャラクターを選択</div>
+      {/* Assignment / edit modal */}
+      {modalOpen && (
+        <Modal onClose={closeModal} boxClassName="w-80 max-h-[80vh] flex flex-col">
+          <div className="text-base font-bold text-ink mb-3">
+            {editing
+              ? `生産物の変更（${editMaster?.name ?? ''} ${SKILL_LABEL[facility]}.${editChar?.[SKILL_KEY_MAP[facility]]}）`
+              : '配置するキャラクターを選択'}
+          </div>
 
           {/* Material selection */}
           <div className="mb-3">
@@ -202,38 +263,52 @@ export default function ProductionFacilityPage({ facility }: Props) {
             </div>
           </div>
 
-          {/* Available characters */}
-          <div className="text-xs text-ink-muted mb-2">配置可能なキャラクター</div>
-          <div className="flex-1 overflow-y-auto space-y-2">
-            {availableChars.length === 0 ? (
-              <p className="text-sm text-ink-subtle text-center py-4">配置可能なキャラクターがいません</p>
-            ) : (
-              availableChars.map((char) => {
-                const master = getCharacterMaster(char.masterId)
-                const skillLv = char[SKILL_KEY_MAP[facility]]
-                return (
-                  <button
-                    key={char.id}
-                    onClick={() => handleAssign(char.id)}
-                    className="w-full flex items-center gap-3 bg-surface-2 hover:bg-surface-3 border border-line hover:border-accent-strong rounded-lg p-2 text-left transition-colors"
-                  >
-                    <CharacterAvatar masterId={char.masterId} size="xs" />
-                    <div>
-                      <div className="text-sm text-ink">{master?.name ?? char.masterId}</div>
-                      <div className="text-xs text-ink-muted">{SKILL_LABEL[facility]}.{skillLv}</div>
-                    </div>
-                  </button>
-                )
-              })
+          {/* Available characters (新規配置のみ) */}
+          {!editing && (
+            <>
+              <div className="text-xs text-ink-muted mb-2">配置可能なキャラクター</div>
+              <div className="flex-1 overflow-y-auto space-y-2">
+                {availableChars.length === 0 ? (
+                  <p className="text-sm text-ink-subtle text-center py-4">配置可能なキャラクターがいません</p>
+                ) : (
+                  availableChars.map((char) => {
+                    const master = getCharacterMaster(char.masterId)
+                    const skillLv = char[SKILL_KEY_MAP[facility]]
+                    return (
+                      <button
+                        key={char.id}
+                        onClick={() => handleAssign(char.id)}
+                        className="w-full flex items-center gap-3 bg-surface-2 hover:bg-surface-3 border border-line hover:border-accent-strong rounded-lg p-2 text-left transition-colors"
+                      >
+                        <CharacterAvatar masterId={char.masterId} size="xs" />
+                        <div>
+                          <div className="text-sm text-ink">{master?.name ?? char.masterId}</div>
+                          <div className="text-xs text-ink-muted">{SKILL_LABEL[facility]}.{skillLv}</div>
+                        </div>
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={closeModal}
+              className="flex-1 bg-surface-2 hover:bg-surface-3 text-ink py-2 rounded-lg text-sm"
+            >
+              キャンセル
+            </button>
+            {editing && (
+              <button
+                onClick={confirmEdit}
+                className="flex-1 bg-accent hover:bg-accent-strong text-ink font-bold py-2 rounded-lg text-sm"
+              >
+                変更
+              </button>
             )}
           </div>
-
-          <button
-            onClick={() => setAssigningSlot(null)}
-            className="mt-3 w-full bg-surface-2 hover:bg-surface-3 text-ink py-2 rounded-lg text-sm"
-          >
-            キャンセル
-          </button>
         </Modal>
       )}
     </div>

@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MATERIALS } from '@/data/materials'
 import { RECIPES } from '@/data/recipes'
 import { getCharacterMaster } from '@/data/characters'
-import { GR_FACILITY_LEVEL_CAP } from '@/data/constants'
+import { GR_FACILITY_LEVEL_CAP, MANUAL_SELL_MS } from '@/data/constants'
 import { useGameStore } from '@/store/gameStore'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useFacilityStore } from '@/store/facilityStore'
+import { useManualProductionStore } from '@/store/manualProductionStore'
 import FacilityStatsBox from '@/app/_components/facility/FacilityStatsBox'
 import AssignedSlotList from '@/app/_components/facility/AssignedSlotList'
 import Modal from '@/app/_components/ui/Modal'
@@ -26,12 +27,15 @@ export default function MerchantPage() {
   const gold            = useGameStore((s) => s.gold)
   const guildRank       = useGameStore((s) => s.guildRank)
   const spendGold       = useGameStore((s) => s.spendGold)
-  const addGold         = useGameStore((s) => s.addGold)
   const characters      = useCharacterStore((s) => s.characters)
   const setAssignment   = useCharacterStore((s) => s.setAssignment)
   const materials       = useInventoryStore((s) => s.materials)
   const removeMaterial  = useInventoryStore((s) => s.removeMaterial)
   const facilityData    = useFacilityStore((s) => s.merchant)
+  // 手動売却タスクは永続ストアに保持（画面遷移・リロード・オフラインをまたいで継続）
+  const sellTasks       = useManualProductionStore((s) => s.sellTasks)
+  const startSellTask   = useManualProductionStore((s) => s.startSellTask)
+  const collectCompleted = useManualProductionStore((s) => s.collectCompleted)
   const getSlotCount    = useFacilityStore((s) => s.getSlotCount)
   const getResearchBonus = useFacilityStore((s) => s.getResearchBonus)
   const getUpgradeCost  = useFacilityStore((s) => s.getUpgradeCost)
@@ -39,9 +43,29 @@ export default function MerchantPage() {
   const researchGuild   = useFacilityStore((s) => s.researchGuild)
 
   const [assignOpen, setAssignOpen] = useState(false)
+  const [editCharId, setEditCharId] = useState<string | null>(null)
   const [pickCharId, setPickCharId] = useState('')
   const [pickSellId, setPickSellId] = useState(SELL_CANDIDATES[0]?.id ?? '')
   const [pickMinStock, setPickMinStock] = useState(0)
+  const [, setTick] = useState(0)
+
+  function startManualSell(itemId: string, price: number) {
+    if (sellTasks[itemId]) return // 売却中は新規不可
+    if ((materials[itemId] ?? 0) < 1) return
+    // 売却対象を先に在庫から引き、所要時間経過後にゴールドが入る
+    if (!removeMaterial(itemId, 1)) return
+    startSellTask(itemId, price, MANUAL_SELL_MS)
+  }
+
+  // 手動売却の進捗アニメーションと完了回収
+  useEffect(() => {
+    if (Object.keys(sellTasks).length === 0) return
+    const id = setInterval(() => {
+      collectCompleted()
+      setTick((x) => x + 1)
+    }, 100)
+    return () => clearInterval(id)
+  }, [sellTasks, collectCompleted])
 
   const slotCount     = getSlotCount('merchant')
   const researchBonus = getResearchBonus('merchant')
@@ -53,6 +77,11 @@ export default function MerchantPage() {
   const availableChars    = characters.filter((c) => c.assignment === null)
   const slots = Array.from({ length: slotCount }, (_, i) => assignedMerchants[i] ?? null)
 
+  const editing = editCharId !== null
+  const modalOpen = assignOpen || editing
+  const editChar = editing ? characters.find((c) => c.id === editCharId) : null
+  const editMaster = editChar ? getCharacterMaster(editChar.masterId) : null
+
   function openAssign() {
     setPickCharId(availableChars[0]?.id ?? '')
     setPickSellId(SELL_CANDIDATES[0]?.id ?? '')
@@ -60,10 +89,23 @@ export default function MerchantPage() {
     setAssignOpen(true)
   }
 
-  function confirmAssign() {
-    if (!pickCharId || !pickSellId) return
-    setAssignment(pickCharId, { type: 'merchant', sellMaterialId: pickSellId, minStock: pickMinStock })
+  function openEdit(char: typeof characters[number]) {
+    const asgn = char.assignment as Extract<typeof char.assignment, { type: 'merchant' }>
+    setPickSellId(asgn?.sellMaterialId ?? SELL_CANDIDATES[0]?.id ?? '')
+    setPickMinStock(asgn?.minStock ?? 0)
+    setEditCharId(char.id)
+  }
+
+  function closeModal() {
     setAssignOpen(false)
+    setEditCharId(null)
+  }
+
+  function confirmAssign() {
+    const target = editCharId ?? pickCharId
+    if (!target || !pickSellId) return
+    setAssignment(target, { type: 'merchant', sellMaterialId: pickSellId, minStock: pickMinStock })
+    closeModal()
   }
 
   return (
@@ -99,38 +141,63 @@ export default function MerchantPage() {
             </>
           )
         }}
+        renderActions={(char) => (
+          <button
+            onClick={() => openEdit(char)}
+            className="text-xs bg-surface-2 hover:bg-surface-3 border border-line-strong text-ink px-2 py-1 rounded transition-colors shrink-0"
+          >
+            変更
+          </button>
+        )}
       />
 
       <div>
-        <div className="text-sm text-ink-muted mb-2">手動販売（クリックで即時1個）</div>
+        <div className="text-sm text-ink-muted mb-2">手動販売（時間がかかります）</div>
         <div className="grid grid-cols-2 gap-2">
-          {SELL_CANDIDATES.filter((s) => (materials[s.id] ?? 0) > 0).map((item) => (
-            <button key={item.id} onClick={() => { if (removeMaterial(item.id, 1)) addGold(item.price) }}
-              className="bg-surface hover:bg-surface-2 border border-line hover:border-accent-strong rounded-lg p-2 text-left transition-colors">
-              <div className="text-xs font-semibold text-ink">{item.name}</div>
-              <div className="flex justify-between text-xs text-ink-muted mt-0.5">
-                <span>{item.price}G</span><span>在庫:{materials[item.id] ?? 0}</span>
-              </div>
-            </button>
-          ))}
+          {SELL_CANDIDATES.filter((s) => (materials[s.id] ?? 0) > 0 || sellTasks[s.id]).map((item) => {
+            const task = sellTasks[item.id]
+            const selling = !!task
+            const progress = selling ? Math.min(1, (Date.now() - task.start) / task.duration) : 0
+            return (
+              <button key={item.id} onClick={() => startManualSell(item.id, item.price)} disabled={selling}
+                className="relative overflow-hidden bg-surface hover:bg-surface-2 border border-line hover:border-accent-strong disabled:cursor-not-allowed rounded-lg p-2 text-left transition-colors">
+                {selling && (
+                  <div className="absolute inset-y-0 left-0 bg-accent/30 pointer-events-none" style={{ width: `${progress * 100}%` }} />
+                )}
+                <div className="relative">
+                  <div className="flex justify-between items-center">
+                    <div className="text-xs font-semibold text-ink">{item.name}</div>
+                    {selling && <div className="text-xs text-accent-strong">{Math.floor(progress * 100)}%</div>}
+                  </div>
+                  <div className="flex justify-between text-xs text-ink-muted mt-0.5">
+                    <span>{item.price}G</span><span>在庫:{materials[item.id] ?? 0}</span>
+                  </div>
+                </div>
+              </button>
+            )
+          })}
         </div>
-        {SELL_CANDIDATES.filter((s) => (materials[s.id] ?? 0) > 0).length === 0 && (
+        {SELL_CANDIDATES.filter((s) => (materials[s.id] ?? 0) > 0 || sellTasks[s.id]).length === 0 && (
           <p className="text-sm text-ink-subtle text-center py-4">販売できる素材がありません</p>
         )}
       </div>
 
-      {assignOpen && (
-        <Modal onClose={() => setAssignOpen(false)} boxClassName="w-80 space-y-3">
-          <div className="font-bold text-ink">配置設定</div>
+      {modalOpen && (
+        <Modal onClose={closeModal} boxClassName="w-80 space-y-3">
+          <div className="font-bold text-ink">{editing ? '販売設定の変更' : '配置設定'}</div>
           <div>
             <div className="text-xs text-ink-muted mb-1">キャラクター</div>
-            <select value={pickCharId} onChange={(e) => setPickCharId(e.target.value)}
-              className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink">
-              {availableChars.map((c) => {
-                const m = getCharacterMaster(c.masterId)
-                return <option key={c.id} value={c.id}>{m?.name ?? c.masterId} (商人Lv.{c.merchantLevel})</option>
-              })}
-            </select>
+            {editing ? (
+              <div className="text-sm text-ink px-2 py-1.5">{editMaster?.name ?? editCharId} (商人Lv.{editChar?.merchantLevel})</div>
+            ) : (
+              <select value={pickCharId} onChange={(e) => setPickCharId(e.target.value)}
+                className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink">
+                {availableChars.map((c) => {
+                  const m = getCharacterMaster(c.masterId)
+                  return <option key={c.id} value={c.id}>{m?.name ?? c.masterId} (商人Lv.{c.merchantLevel})</option>
+                })}
+              </select>
+            )}
           </div>
           <div>
             <div className="text-xs text-ink-muted mb-1">販売する素材/商品</div>
@@ -148,10 +215,10 @@ export default function MerchantPage() {
               className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink" />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setAssignOpen(false)}
+            <button onClick={closeModal}
               className="flex-1 bg-surface-2 hover:bg-surface-3 text-ink py-2 rounded text-sm">キャンセル</button>
-            <button onClick={confirmAssign} disabled={!pickCharId}
-              className="flex-1 bg-accent hover:bg-accent-strong disabled:opacity-40 text-ink font-bold py-2 rounded text-sm">配置</button>
+            <button onClick={confirmAssign} disabled={!editing && !pickCharId}
+              className="flex-1 bg-accent hover:bg-accent-strong disabled:opacity-40 text-ink font-bold py-2 rounded text-sm">{editing ? '変更' : '配置'}</button>
           </div>
         </Modal>
       )}

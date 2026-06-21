@@ -17,13 +17,16 @@ interface FacilityState {
   alchemy: ProductionFacility
   merchant: GuildFacility
   craft: GuildFacility
+  // ダンジョン自動周回の配置枠（研究は無し。拡張のみ）
+  dungeon: ProductionFacility
 
   expandProduction: (facility: ProductionFacilityId) => void
   researchProduction: (facility: ProductionFacilityId) => void
   expandGuild: (facility: GuildFacilityId) => void
   researchGuild: (facility: GuildFacilityId) => void
+  expandDungeon: () => void
 
-  getSlotCount: (facility: ProductionFacilityId | GuildFacilityId) => number
+  getSlotCount: (facility: ProductionFacilityId | GuildFacilityId | 'dungeon') => number
   getResearchBonus: (facility: ProductionFacilityId | GuildFacilityId) => number
   getUpgradeCost: (level: number) => number
 }
@@ -37,6 +40,7 @@ export const useFacilityStore = create<FacilityState>()(
       alchemy: { ...INITIAL_FACILITY },
       merchant: { ...INITIAL_GUILD },
       craft: { ...INITIAL_GUILD },
+      dungeon: { ...INITIAL_FACILITY },
 
       expandProduction: (facility) =>
         set((s) => {
@@ -60,6 +64,12 @@ export const useFacilityStore = create<FacilityState>()(
         set((s) => {
           if (s[facility].researchLevel >= useGameStore.getState().guildRank * GR_FACILITY_LEVEL_CAP) return s
           return { [facility]: { ...s[facility], researchLevel: s[facility].researchLevel + 1 } }
+        }),
+
+      expandDungeon: () =>
+        set((s) => {
+          if (s.dungeon.expansionLevel >= useGameStore.getState().guildRank * GR_FACILITY_LEVEL_CAP) return s
+          return { dungeon: { ...s.dungeon, expansionLevel: s.dungeon.expansionLevel + 1 } }
         }),
 
       getSlotCount: (facility) => FACILITY_INITIAL_SLOTS + get()[facility].expansionLevel,
