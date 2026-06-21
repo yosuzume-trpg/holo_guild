@@ -7,7 +7,7 @@ import Header from './Header'
 import TabNav from './TabNav'
 import SetupScreen from './SetupScreen'
 import { useGameStore } from '@/store/gameStore'
-import { CYCLE_DURATION_MS, PROD_STAR_BONUS_PER_RANK, PROD_CHAR_LEVEL_BONUS, PROD_DL_BONUS_PER_LEVEL, CRAFT_CHAR_LEVEL_BONUS, MERCHANT_CHAR_LEVEL_BONUS } from '@/data/constants'
+import { CYCLE_DURATION_MS, PROD_STAR_BONUS_PER_RANK, PROD_CHAR_LEVEL_BONUS, PROD_DL_BONUS_PER_LEVEL, CRAFT_CHAR_LEVEL_BONUS, MERCHANT_CHAR_LEVEL_BONUS, MATERIAL_PRICE_MULTIPLIER } from '@/data/constants'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
@@ -139,9 +139,10 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       frac[key] = (frac[key] ?? 0) + rate * elapsedMin
 
       // 経験値は整数個ドロップの有無に関わらず毎tick加算（取りこぼし防止）
+      // 価格倍率(MATERIAL_PRICE_MULTIPLIER)で割り、生産レベリングのペースを倍率適用前と同じに保つ
       useCharacterStore
         .getState()
-        .gainProductionExp(char.id, asgn.type, mat.price * rate * elapsedMin)
+        .gainProductionExp(char.id, asgn.type, (mat.price * rate * elapsedMin) / MATERIAL_PRICE_MULTIPLIER)
 
       const whole = Math.floor(frac[key])
       if (whole >= 1) {

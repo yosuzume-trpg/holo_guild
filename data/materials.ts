@@ -1,4 +1,5 @@
 import type { ProductionFacilityId } from '@/types/game'
+import { MATERIAL_PRICE_MULTIPLIER } from '@/data/constants'
 
 export interface MaterialDef {
   id: string
@@ -9,7 +10,8 @@ export interface MaterialDef {
   dungeonMinLevel?: number
 }
 
-export const MATERIALS: MaterialDef[] = [
+// price は基準値。実際の価格は MATERIAL_PRICE_MULTIPLIER を乗じた値（下部 MATERIALS）。
+const RAW_MATERIALS: MaterialDef[] = [
   { id: 'wheat',       name: '小麦',         price: 1,  ratePerMin: 2.5,  facility: 'farm' },
   { id: 'potato',      name: 'じゃがいも',   price: 2,  ratePerMin: 1.25, facility: 'farm' },
   { id: 'tomato',      name: 'トマト',       price: 3,  ratePerMin: 0.83, facility: 'farm' },
@@ -40,6 +42,12 @@ export const MATERIALS: MaterialDef[] = [
   { id: 'magiccrystal',  name: '魔力結晶', price: 25, ratePerMin: 0.1,  facility: 'dungeon', dungeonMinLevel: 1 },
   { id: 'ancientgear',   name: '古代歯車', price: 25, ratePerMin: 0.1,  facility: 'dungeon', dungeonMinLevel: 1 },
 ]
+
+// 経済倍率を価格に適用（ratePerMin 等は不変）
+export const MATERIALS: MaterialDef[] = RAW_MATERIALS.map((m) => ({
+  ...m,
+  price: m.price * MATERIAL_PRICE_MULTIPLIER,
+}))
 
 export const MATERIALS_BY_FACILITY = {
   farm:    MATERIALS.filter((m) => m.facility === 'farm'),

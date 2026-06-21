@@ -90,6 +90,17 @@ export const CHAR_STAT_VARIANCE: Record<Tendency, Partial<CharacterStats>> = {
 export const EXP_PER_LEVEL = 100;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 経済バランス
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 全素材価格・レシピ原価/売値に乗じる経済倍率（生産収入の底上げ用）。
+ * 生産スキルの経験値は「基準価格（×前）」基準でペースを維持するため、
+ * 経験値計算側ではこの倍率で割って相殺する。
+ */
+export const MATERIAL_PRICE_MULTIPLIER = 5;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ★ランク
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -261,7 +272,7 @@ export const RECOVERY_HEAL_PERCENT = 0.5;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** 宝箱のゴールド = DL × CHEST_GOLD_FACTOR */
-export const CHEST_GOLD_FACTOR = 50;
+export const CHEST_GOLD_FACTOR = 10;
 
 /** 宝箱で素材が出る確率閾値（60%） */
 export const CHEST_MATERIAL_THRESHOLD = 0.6;
@@ -286,10 +297,10 @@ export const CHEST_MAT_RANGE = 4;
 export const BATTLE_GOLD_NORMAL_FACTOR = 10;
 
 /** 強敵撃破のゴールド報酬 = DL × BATTLE_GOLD_ELITE_FACTOR */
-export const BATTLE_GOLD_ELITE_FACTOR = 50;
+export const BATTLE_GOLD_ELITE_FACTOR = 30;
 
 /** ボス撃破のゴールド報酬 = DL × BATTLE_GOLD_BOSS_FACTOR */
-export const BATTLE_GOLD_BOSS_FACTOR = 100;
+export const BATTLE_GOLD_BOSS_FACTOR = 50;
 
 /** 通常戦闘の素材ドロップ数：最小 */
 export const BATTLE_MAT_NORMAL_MIN = 2;

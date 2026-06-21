@@ -1,3 +1,5 @@
+import { MATERIAL_PRICE_MULTIPLIER } from '@/data/constants'
+
 export interface RecipeDef {
   id: string
   name: string
@@ -7,7 +9,8 @@ export interface RecipeDef {
   sellPrice: number
 }
 
-export const RECIPES: RecipeDef[] = [
+// baseCost は基準原価。実際の原価/売値は MATERIAL_PRICE_MULTIPLIER を適用（下部 RECIPES）。
+const RAW_RECIPES: RecipeDef[] = [
   // 食品
   { id: 'bread',        name: 'パン',         category: 'food',      ingredients: [{ materialId: 'wheat', qty: 2 }],                                               baseCost: 2,  sellPrice: Math.ceil(2  * 1.2) },
   { id: 'potato_salad', name: 'ポテトサラダ', category: 'food',      ingredients: [{ materialId: 'potato', qty: 1 }, { materialId: 'tomato', qty: 1 }],              baseCost: 5,  sellPrice: Math.ceil(5  * 1.2) },
@@ -44,6 +47,13 @@ export const RECIPES: RecipeDef[] = [
   { id: 'magic_orb',    name: '魔力の宝珠',   category: 'craft',     ingredients: [{ materialId: 'magiccrystal', qty: 2 }],                                         baseCost: 50, sellPrice: Math.ceil(50 * 1.2) },
   { id: 'gear_work',    name: '歯車仕掛け',   category: 'craft',     ingredients: [{ materialId: 'ancientgear', qty: 2 }],                                          baseCost: 50, sellPrice: Math.ceil(50 * 1.2) },
 ]
+
+// 経済倍率を原価・売値に適用（売値 = ceil(原価 × 倍率 × 1.2)）
+export const RECIPES: RecipeDef[] = RAW_RECIPES.map((r) => ({
+  ...r,
+  baseCost:  r.baseCost * MATERIAL_PRICE_MULTIPLIER,
+  sellPrice: Math.ceil(r.baseCost * MATERIAL_PRICE_MULTIPLIER * 1.2),
+}))
 
 export const CATEGORY_LABEL: Record<RecipeDef['category'], string> = {
   food:      '食品',
