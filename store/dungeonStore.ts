@@ -14,7 +14,7 @@ export interface StoredBattle {
   loot: { gold: number; materials: Record<string, number>; equipmentMasterIds: string[]; exp: number }
   turnOrder: { id: string; isPlayer: boolean }[]
   currentTurnIndex: number
-  battlePhase: 'player-action' | 'result' | null
+  battlePhase: 'player-action' | 'enemy-action' | 'result' | null
   log: string[]
 }
 

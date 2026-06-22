@@ -8,7 +8,12 @@ import type { CharacterInstance, CharacterStats, EquipmentInstance } from '@/typ
 
 export interface CalcedStats {
   base:  CharacterStats
+  /** total - base（装備＋キャラ★の合算ボーナス） */
   bonus: CharacterStats
+  /** キャラ★ランクぶんのボーナス（floor(base × ★倍率)） */
+  starBonus: CharacterStats
+  /** 装備ぶんのボーナス（bonus - starBonus。装備★ランクのスケーリングを含む） */
+  equipBonus: CharacterStats
   total: CharacterStats
 }
 
@@ -85,7 +90,27 @@ export function calcCharacterStats(
     spd:  total.spd  - base.spd,
   }
 
-  return { base, bonus, total }
+  // キャラ★ぶんを単独で floor して切り出し、残りを装備ぶんとする
+  // （starBonus + equipBonus = bonus、total = base + bonus を厳密に満たす）
+  const starBonusStats: CharacterStats = {
+    hp:   Math.floor(base.hp   * starBonus),
+    atk:  Math.floor(base.atk  * starBonus),
+    def:  Math.floor(base.def  * starBonus),
+    mag:  Math.floor(base.mag  * starBonus),
+    mdef: Math.floor(base.mdef * starBonus),
+    spd:  Math.floor(base.spd  * starBonus),
+  }
+
+  const equipBonus: CharacterStats = {
+    hp:   bonus.hp   - starBonusStats.hp,
+    atk:  bonus.atk  - starBonusStats.atk,
+    def:  bonus.def  - starBonusStats.def,
+    mag:  bonus.mag  - starBonusStats.mag,
+    mdef: bonus.mdef - starBonusStats.mdef,
+    spd:  bonus.spd  - starBonusStats.spd,
+  }
+
+  return { base, bonus, starBonus: starBonusStats, equipBonus, total }
 }
 
 /**

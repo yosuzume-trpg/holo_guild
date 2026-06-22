@@ -236,6 +236,15 @@ export const DUNGEON_ATTR: Attribute[] = ["fire", "wind", "earth", "water"];
 /** 通常敵が無属性のままになる確率（残りはDL属性が付与される） */
 export const ENEMY_NEUTRAL_CHANCE = 0.25;
 
+/** ボスの2回目行動が発生する素早さ倍率（本来の素早さ×この値の位置でも行動） */
+export const BOSS_SECOND_ACTION_SPD_FACTOR = 0.9;
+
+/** このDL以上のボスステージはボスに加えて随伴の通常敵を配置する */
+export const BOSS_EXTRA_ENEMY_DL_THRESHOLD = 11;
+
+/** ボスステージの随伴の通常敵数（DL ≥ 閾値のとき） */
+export const BOSS_EXTRA_ENEMY_COUNT = 2;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ステージ生成確率
 // ─────────────────────────────────────────────────────────────────────────────
@@ -351,6 +360,9 @@ export const RETREAT_REWARD_RATE = 0.5;
 /** バフ・デバフの持続ターン数 */
 export const BUFF_DURATION_TURNS = 3;
 
+/** 敵1体の行動にかける演出ディレイ（ミリ秒）。行動中の敵を可視化する時間。 */
+export const ENEMY_TURN_DELAY_MS = 800;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 属性
 // ─────────────────────────────────────────────────────────────────────────────
@@ -374,12 +386,12 @@ export const ATTR_ADVANTAGE: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const ENEMY_BASE_STATS = {
-    standard: { hp: 125, atk: 75, def: 40, mag: 75, mdef: 40, spd: 8 }, // 標準型
-    attack: { hp: 125, atk: 90, def: 50, mag: 30, mdef: 25, spd: 10 }, // 攻撃型
-    magic: { hp: 125, atk: 30, def: 25, mag: 90, mdef: 50, spd: 10 }, // 魔法型
-    defense: { hp: 150, atk: 40, def: 65, mag: 40, mdef: 65, spd: 5 }, // 防御型
-    elite: { hp: 270, atk: 95, def: 40, mag: 95, mdef: 40, spd: 9 }, // 強敵
-    boss: { hp: 600, atk: 110, def: 40, mag: 110, mdef: 40, spd: 10 }, // ボス
+    standard: { hp: 200, atk: 90, def: 40, mag: 90, mdef: 40, spd: 8 }, // 標準型
+    attack: { hp: 200, atk: 120, def: 50, mag: 30, mdef: 25, spd: 10 }, // 攻撃型
+    magic: { hp: 200, atk: 30, def: 25, mag: 120, mdef: 50, spd: 8 }, // 魔法型
+    defense: { hp: 300, atk: 60, def: 70, mag: 40, mdef: 70, spd: 5 }, // 防御型
+    elite: { hp: 400, atk: 120, def: 50, mag: 95, mdef: 50, spd: 10 }, // 強敵
+    boss: { hp: 800, atk: 130, def: 55, mag: 130, mdef: 55, spd: 12 }, // ボス
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -387,12 +399,12 @@ export const ENEMY_BASE_STATS = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const ENEMY_EXP_BASE: Record<string, number> = {
-    standard: 20,
-    attack: 20,
-    magic: 20,
-    defense: 20, // 通常敵
-    elite: 50, // 強敵
-    boss: 100, // ボス
+    standard: 10,
+    attack: 10,
+    magic: 10,
+    defense: 10, // 通常敵
+    elite: 30, // 強敵
+    boss: 60, // ボス
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

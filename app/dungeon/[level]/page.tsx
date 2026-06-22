@@ -12,11 +12,16 @@ import { useCharacterStore } from "@/store/characterStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useDungeonStore } from "@/store/dungeonStore";
 import type { StoredBattle } from "@/store/dungeonStore";
+import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 import { calcCharacterStats, calcMaxHp } from "@/utils/characterStats";
 import {
     ATTR_ADVANTAGE,
     DUNGEON_ATTR,
     ENEMY_NEUTRAL_CHANCE,
+    BOSS_SECOND_ACTION_SPD_FACTOR,
+    BOSS_EXTRA_ENEMY_DL_THRESHOLD,
+    BOSS_EXTRA_ENEMY_COUNT,
+    DUNGEON_STAGE_COUNT,
     ATTR_ADVANTAGE_MULT,
     ATTR_DISADVANTAGE_MULT,
     ENEMY_BASE_STATS,
@@ -38,6 +43,7 @@ import {
     BATTLE_MAT_ELITE_RANGE,
     RETREAT_REWARD_RATE,
     BUFF_DURATION_TURNS,
+    ENEMY_TURN_DELAY_MS,
     STAGE2_BATTLE_CHANCE,
     STAGE4_RECOVERY_THRESHOLD,
     STAGE4_CHEST_THRESHOLD,
@@ -129,7 +135,15 @@ function makeEnemy(type: EnemyTypeKey, dl: number, attr: Attribute): EnemyInstan
 }
 function makeEnemies(stageType: StageType, dl: number): EnemyInstance[] {
     const attr = dungeonAttr(dl);
-    if (stageType === "boss") return [makeEnemy("boss", dl, attr)];
+    if (stageType === "boss") {
+        const boss = makeEnemy("boss", dl, attr);
+        if (dl < BOSS_EXTRA_ENEMY_DL_THRESHOLD) return [boss];
+        // DL11以上は随伴の通常敵を追加（通常敵の生成ルールに従う）
+        const adds = Array.from({ length: BOSS_EXTRA_ENEMY_COUNT }, () =>
+            makeEnemy(randomEnemyType(), dl, Math.random() < ENEMY_NEUTRAL_CHANCE ? null : attr),
+        );
+        return [boss, ...adds];
+    }
     if (stageType === "elite") return [makeEnemy("elite", dl, attr)];
     const count =
         dl <= ENEMY_COUNT_DL_THRESHOLD
@@ -148,7 +162,18 @@ function buildTurnOrder(partyIds: string[], chars: CharacterInstance[], enemies:
             const c = chars.find((x) => x.id === id)!;
             return { id, spd: c.stats.spd * c.battleLevel, isPlayer: true };
         }),
-        ...enemies.map((e) => ({ id: e.id, spd: e.stats.spd, isPlayer: false })),
+        ...enemies.flatMap((e) => {
+            const slots = [{ id: e.id, spd: e.stats.spd, isPlayer: false }];
+            // ボスは2回行動: 本来の素早さ + 素早さ×0.9 の2スロット
+            if (e.type === "boss") {
+                slots.push({
+                    id: e.id,
+                    spd: e.stats.spd * BOSS_SECOND_ACTION_SPD_FACTOR,
+                    isPlayer: false,
+                });
+            }
+            return slots;
+        }),
     ];
     all.sort((a, b) => b.spd - a.spd);
     return all.map(({ id, isPlayer }) => ({ id, isPlayer }));
@@ -206,6 +231,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     const updateCurrentHp = useCharacterStore((s) => s.updateCurrentHp);
     const clearDungeon = useDungeonStore((s) => s.clearDungeon);
     const addRecruitPoints = useDungeonStore((s) => s.addRecruitPoints);
+    const maxCleared = useDungeonStore((s) => s.maxClearedLevel);
     const storedBattle = useDungeonStore((s) => s.activeBattle);
     const setActiveBattle = useDungeonStore((s) => s.setActiveBattle);
     const invEquipment = useInventoryStore((s) => s.equipment);
@@ -253,6 +279,25 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bs]);
 
+    // 敵のターンを少し時間をかけて解決する。"enemy-action" の間は行動中の敵を表示し、
+    // ENEMY_TURN_DELAY_MS 経過後に1体ぶんだけ処理する。処理後は advanceTurn で次のスロットへ
+    // 進み、それが再び敵なら同じフローが繰り返される（1体ずつ順番に行動）。
+    useEffect(() => {
+        if (!bs || result || bs.battlePhase !== "enemy-action") return;
+        const slot = bs.turnOrder[bs.currentTurnIndex];
+        if (!slot || slot.isPlayer) return;
+        const enemy = bs.enemies.find((e) => e.id === slot.id);
+        if (!enemy || enemy.hp <= 0) {
+            setBs(advanceTurn(bs));
+            return;
+        }
+        const timer = setTimeout(() => {
+            setBs(processEnemyTurn(bs, bs.currentTurnIndex, enemy));
+        }, ENEMY_TURN_DELAY_MS);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bs, result]);
+
     // ── Party selection ─────────────────────────────────────────────────────
     function toggleParty(id: string) {
         setPartyIds((p) =>
@@ -260,8 +305,13 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
         );
     }
 
+    // 挑戦できる最大DL: クリア済みの次のレベル、ただし GR×10 が上限（dungeon 一覧と同じ規則）。
+    // 直接URL遷移などで上限を超えたDLを攻略・クリアできてしまう不具合の防止に使う。
+    const unlockedMax = Math.min(maxCleared + 1, guildRank * 10);
+    const isLocked = !Number.isFinite(dl) || dl < 1 || dl > unlockedMax;
+
     function startDungeon() {
-        if (partyIds.length === 0) return;
+        if (partyIds.length === 0 || isLocked) return;
         const stageTypes = generateStageTypes(dl);
 
         // Snapshot item inventory
@@ -279,6 +329,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
 
         const stageType = stageTypes[0];
         const enemies = stageType === "battle" ? makeEnemies(stageType, dl) : [];
+        const turnOrder = enemies.length > 0 ? buildTurnOrder(partyIds, characters, enemies) : [];
         const initialBs: BattleState = {
             dungeonLevel: dl,
             stageTypes,
@@ -289,19 +340,13 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             partyHps,
             partyBuffs: {},
             loot: { gold: 0, materials: {}, equipmentMasterIds: [], exp: 0 },
-            turnOrder: enemies.length > 0 ? buildTurnOrder(partyIds, characters, enemies) : [],
+            turnOrder,
             currentTurnIndex: 0,
-            battlePhase: enemies.length > 0 ? "player-action" : "result",
+            // 先頭スロットが敵なら enemy-action として開始し、useEffect が処理する
+            battlePhase:
+                enemies.length === 0 ? "result" : turnOrder[0]?.isPlayer ? "player-action" : "enemy-action",
             log: [`ダンジョン Lv.${dl} 開始！`],
         };
-        const firstSlot = initialBs.turnOrder[initialBs.currentTurnIndex];
-        if (firstSlot && !firstSlot.isPlayer) {
-            const firstEnemy = initialBs.enemies.find((e) => e.id === firstSlot.id);
-            if (firstEnemy) {
-                setBs(processEnemyTurn(initialBs, initialBs.currentTurnIndex, firstEnemy));
-                return;
-            }
-        }
         setBs(initialBs);
     }
 
@@ -356,6 +401,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             nextType === "battle" || nextType === "boss" || nextType === "elite"
                 ? makeEnemies(nextType, dl)
                 : [];
+        const turnOrder =
+            enemies.length > 0 ? buildTurnOrder(state.partyIds, characters, enemies) : [];
 
         const next: BattleState = {
             ...state,
@@ -364,10 +411,11 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             enemies,
             partyHps: newHps,
             loot: newLoot,
-            turnOrder:
-                enemies.length > 0 ? buildTurnOrder(state.partyIds, characters, enemies) : [],
+            turnOrder,
             currentTurnIndex: 0,
-            battlePhase: enemies.length > 0 ? "player-action" : "result",
+            // 先頭スロットが敵なら enemy-action として開始し、useEffect が処理する
+            battlePhase:
+                enemies.length === 0 ? "result" : turnOrder[0]?.isPlayer ? "player-action" : "enemy-action",
             log: newLog,
         };
         return next;
@@ -400,6 +448,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     }
 
     // ── Turn advancement ────────────────────────────────────────────────────
+    // 次に行動する生存スロットへ進める。敵の番は即座に解決せず "enemy-action" に移行し、
+    // 行動中の敵を可視化する。実際の処理は useEffect が ENEMY_TURN_DELAY_MS 後に行う。
     function advanceTurn(state: BattleState): BattleState {
         const len = state.turnOrder.length;
         if (len === 0) return state;
@@ -416,8 +466,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             } else {
                 const enemy = state.enemies.find((e) => e.id === slot.id);
                 if (enemy && enemy.hp > 0) {
-                    // Process enemy turn
-                    return processEnemyTurn(state, idx, enemy);
+                    return { ...state, currentTurnIndex: idx, battlePhase: "enemy-action" };
                 }
             }
             idx = (idx + 1) % len;
@@ -687,18 +736,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     }
 
     function proceedToStage(bsState: BattleState) {
-        const next = advanceStage(bsState);
-        if (next.battlePhase === "player-action") {
-            const slot = next.turnOrder[next.currentTurnIndex];
-            if (slot && !slot.isPlayer) {
-                const enemy = next.enemies.find((e) => e.id === slot.id);
-                if (enemy && enemy.hp > 0) {
-                    setBs(processEnemyTurn(next, next.currentTurnIndex, enemy));
-                    return;
-                }
-            }
-        }
-        setBs(next);
+        // advanceStage が先頭が敵なら enemy-action を設定するので、敵ターンは useEffect が処理する
+        setBs(advanceStage(bsState));
     }
 
     function handleNextStage() {
@@ -706,7 +745,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
         const nextStage = bs.currentStage + 1;
         if (nextStage >= 6) return;
 
-        if (Math.random() < DUNGEON_BRANCH_CHANCE) {
+        // 最終ステージ（ボス）は分岐させず固定にする
+        if (nextStage < DUNGEON_STAGE_COUNT - 1 && Math.random() < DUNGEON_BRANCH_CHANCE) {
             const baseType = bs.stageTypes[nextStage];
             const options: [StageType, StageType] =
                 baseType === "recovery" || baseType === "chest"
@@ -727,6 +767,36 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
         proceedToStage({ ...bs, stageTypes: newStageTypes });
     }
 
+    // ─── Render: locked (挑戦不可なDL) ─────────────────────────────────────
+    // 進行中バトル(bs)・結果画面でない状態で、上限を超えたDLに来た場合はブロック。
+    if (!bs && result === null && isLocked) {
+        const overGrCap = dl > guildRank * 10;
+        return (
+            <div className="p-4">
+                <div className="flex items-center gap-3 mb-6">
+                    <button
+                        onClick={() => router.push("/dungeon")}
+                        className="text-sm text-ink-muted hover:text-ink"
+                    >
+                        ← 戻る
+                    </button>
+                    <h1 className="text-lg font-bold text-ink">DL{dl}</h1>
+                </div>
+                <div className="bg-surface border border-line rounded-xl p-6 text-center space-y-2">
+                    <div className="text-2xl">🔒</div>
+                    <div className="text-sm font-semibold text-ink">
+                        このダンジョンにはまだ挑戦できません
+                    </div>
+                    <div className="text-xs text-ink-muted">
+                        {overGrCap
+                            ? `挑戦できるのは DL${guildRank * 10} まで（GR${guildRank}×10）です。DL${guildRank * 10} をクリアし「ギルド → ランクアップ」で GR${guildRank + 1} に上げると解放されます。`
+                            : `前のダンジョンをクリアすると解放されます（現在の解放上限: DL${unlockedMax}）。`}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     // ─── Render: party select ─────────────────────────────────────────────
     if (!bs && result === null) {
         // 自動周回中など、何かに配置されているキャラはパーティーに選べない（未配置のみ）
@@ -743,7 +813,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                     <h1 className="text-lg font-bold text-ink">DL{dl} パーティ選択</h1>
                 </div>
                 <p className="text-xs text-ink-muted mb-3">1〜5人選択 ({partyIds.length}/5)</p>
-                <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="flex flex-wrap gap-2 mb-4">
                     {eligible.map((char) => {
                         const master = getCharacterMaster(char.masterId);
                         const sel = partyIds.includes(char.id);
@@ -753,39 +823,57 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                         const expPct = Math.min(100, Math.round((expCur / expNeeded) * 100));
                         const weaponName = getEquipName(char.equipment.weapon);
                         const armorName = getEquipName(char.equipment.armor);
+                        const st = effectiveStats(char);
                         return (
                             <button
                                 key={char.id}
                                 onClick={() => toggleParty(char.id)}
-                                className={`rounded-xl p-3 border text-left transition-colors ${
+                                className={`w-52 rounded-xl p-3 border text-left transition-colors ${
                                     sel
                                         ? "bg-surface-2 border-accent-strong text-accent-strong"
                                         : "bg-surface border-line hover:border-line-strong text-ink"
                                 }`}
                             >
-                                <div className="flex items-center justify-between gap-1 mb-0.5">
-                                    <div className="text-sm font-semibold truncate">
-                                        {master?.name ?? char.masterId}
+                                <div className="flex items-center gap-2 mb-1">
+                                    <CharacterAvatar masterId={char.masterId} size="md" />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center justify-between gap-1">
+                                            <span className="text-sm font-semibold truncate">
+                                                {master?.name ?? char.masterId}
+                                            </span>
+                                            <span
+                                                className={`text-xs shrink-0 ${TENDENCY_COLOR[char.tendency]}`}
+                                            >
+                                                {TENDENCY_LABEL[char.tendency]}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-ink-muted">
+                                            戦闘 Lv.{char.battleLevel}
+                                        </div>
                                     </div>
-                                    <span
-                                        className={`text-xs shrink-0 ${TENDENCY_COLOR[char.tendency]}`}
-                                    >
-                                        {TENDENCY_LABEL[char.tendency]}
-                                    </span>
                                 </div>
-                                <div className="text-xs text-ink-muted">
-                                    HP: {char.currentHp}/{calcMaxHp(char, invEquipment)}
+
+                                {/* 戦闘ステータス（合計値・HP含む） */}
+                                <div className="grid grid-cols-3 gap-x-2 gap-y-0.5 text-[11px] text-ink-muted">
+                                    <span>HP {st.hp}</span>
+                                    <span>攻 {st.atk}</span>
+                                    <span>防 {st.def}</span>
+                                    <span>魔 {st.mag}</span>
+                                    <span>魔防 {st.mdef}</span>
+                                    <span>速 {st.spd}</span>
                                 </div>
+
                                 {(weaponName || armorName) && (
-                                    <div className="text-xs text-ink-subtle mt-0.5 truncate">
+                                    <div className="text-xs text-ink-subtle mt-1 truncate">
                                         {weaponName && `⚔ ${weaponName}`}
                                         {weaponName && armorName ? "　" : ""}
                                         {armorName && `🛡 ${armorName}`}
                                     </div>
                                 )}
+
                                 <div className="mt-1.5">
                                     <div className="flex justify-between text-xs text-ink-muted mb-0.5">
-                                        <span>戦闘 Lv.{char.battleLevel}</span>
+                                        <span>EXP</span>
                                         <span>
                                             {expCur}/{expNeeded}
                                         </span>
@@ -936,6 +1024,10 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
     const isPlayerTurn = slot?.isPlayer && bs.battlePhase === "player-action";
     const actingChar = isPlayerTurn ? characters.find((c) => c.id === slot.id) : null;
     const actingEffStats = actingChar ? effectiveStats(actingChar) : null;
+    // 行動中の敵（enemy-action フェーズのときだけ）を強調表示するためのID
+    const actingEnemyId =
+        bs.battlePhase === "enemy-action" && slot && !slot.isPlayer ? slot.id : null;
+    const actingEnemy = actingEnemyId ? bs.enemies.find((e) => e.id === actingEnemyId) : null;
 
     return (
         <div className="flex flex-col h-full">
@@ -965,6 +1057,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                         <div className="flex gap-2 flex-wrap">
                             {bs.enemies.map((e) => {
                                 const isTarget = action === "attack" || action === "magic";
+                                const isActing = e.id === actingEnemyId;
                                 return (
                                     <button
                                         key={e.id}
@@ -974,14 +1067,21 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                             handleAttack(e.id, action === "magic")
                                         }
                                         disabled={e.hp <= 0 || !isTarget}
-                                        className={`rounded-lg p-2 text-center min-w-20 border transition-colors ${
+                                        className={`relative rounded-lg p-2 text-center min-w-20 border transition-all ${
                                             e.hp <= 0
                                                 ? "opacity-30 border-line bg-surface"
                                                 : isTarget
                                                   ? "border-accent-strong bg-surface-2 hover:bg-surface-3 cursor-pointer"
-                                                  : "border-line bg-surface"
+                                                  : isActing
+                                                    ? "border-danger bg-red-100 ring-2 ring-danger shadow-md scale-[1.03]"
+                                                    : "border-line bg-surface"
                                         }`}
                                     >
+                                        {isActing && (
+                                            <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-danger px-1.5 py-0.5 rounded-full whitespace-nowrap shadow">
+                                                ⚡行動中
+                                            </span>
+                                        )}
                                         <div className="text-xs text-ink">
                                             {e.type}
                                             {e.attribute && (
@@ -1223,7 +1323,17 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                         )}
                     </div>
                 ) : (
-                    <div className="text-center text-sm text-ink-subtle py-1">敵のターン...</div>
+                    <div className="text-center text-sm text-danger py-1">
+                        {actingEnemy ? (
+                            <>
+                                🔴 {actingEnemy.type}
+                                {actingEnemy.attribute && `[${ATTR_LABEL[actingEnemy.attribute]}]`}{" "}
+                                の行動...
+                            </>
+                        ) : (
+                            "敵のターン..."
+                        )}
+                    </div>
                 )}
             </div>
         </div>

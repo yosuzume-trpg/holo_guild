@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import CharacterPortrait from "@/app/_components/ui/CharacterPortrait";
+import EquipModal from "@/app/_components/ui/EquipModal";
+import AffectionBadge from "@/app/_components/ui/AffectionBadge";
+import RankBadge from "@/app/_components/ui/RankBadge";
 import { useCharacterStore } from "@/store/characterStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useGameStore } from "@/store/gameStore";
@@ -11,7 +14,7 @@ import { getEquipment } from "@/data/equipment";
 import { STAR_GOLD_COST_FACTOR } from "@/data/constants";
 import { calcCharacterStats } from "@/utils/characterStats";
 import ProgressBar from "@/app/_components/ui/ProgressBar";
-import type { CharacterInstance, EquipmentInstance } from "@/types/game";
+import type { CharacterInstance, EquipmentInstance, EquipmentSlot } from "@/types/game";
 
 const TENDENCY_COLOR: Record<string, string> = {
     standard: "bg-surface-3",
@@ -49,6 +52,7 @@ const TAB_LABELS: Record<TabKey, string> = {
 
 interface CardProps {
     char: CharacterInstance;
+    characters: CharacterInstance[];
     invEquipment: EquipmentInstance[];
     gold: number;
     tab: TabKey;
@@ -56,6 +60,7 @@ interface CardProps {
     socialize: (id: string) => void;
     upgradeStarRank: (id: string) => void;
     spendGold: (amount: number) => boolean;
+    equip: (id: string, slot: EquipmentSlot, equipInstanceId: string | null) => void;
 }
 
 function expInLevel(totalExp: number, level: number): number {
@@ -82,20 +87,26 @@ function Level({
     expNeeded,
     color,
     textColor,
+    heart,
 }: {
     level: number;
     expCur: number;
     expNeeded: number;
     color?: string;
     textColor?: string;
+    heart?: boolean;
 }) {
     return (
         <div className="flex justify-between">
-            <div
-                className={`flex w-10 h-10 m-1 justify-center items-center text-2xl font-extrabold ${textColor || "text-accent-strong"}`}
-            >
-                {level}
-            </div>
+            {heart ? (
+                <AffectionBadge level={level} className="w-10 h-10 m-1 text-2xl" />
+            ) : (
+                <div
+                    className={`flex w-10 h-10 m-1 justify-center items-center text-2xl font-extrabold ${textColor || "text-accent-strong"}`}
+                >
+                    {level}
+                </div>
+            )}
             <div className="flex-1">
                 <span className="text-xs">
                     {expCur} / {expNeeded}
@@ -108,6 +119,7 @@ function Level({
 
 function CharacterCard({
     char,
+    characters,
     invEquipment,
     gold,
     tab,
@@ -115,8 +127,10 @@ function CharacterCard({
     socialize,
     upgradeStarRank,
     spendGold,
+    equip,
 }: CardProps) {
     const master = getCharacterMaster(char.masterId);
+    const [equipSlot, setEquipSlot] = useState<EquipmentSlot | null>(null);
 
     function getEquipName(instanceId: string | null): string | null {
         if (!instanceId) return null;
@@ -155,9 +169,7 @@ function CharacterCard({
                         >
                             {TENDENCY_LABEL[char.tendency]}
                         </span>
-                        <span className="bg-accent text-ink text-xs font-bold px-1 py-0.5 rounded leading-none shrink-0">
-                            ★{char.starRank}
-                        </span>
+                        <RankBadge rank={char.starRank} className="w-6 h-6 text-xs shrink-0" />
                     </div>
                 </div>
 
@@ -170,6 +182,7 @@ function CharacterCard({
                             expNeeded={char.affectionLevel * 100}
                             color="bg-pink-500"
                             textColor="text-affection"
+                            heart
                         />
                         <div className="flex flex-col gap-1">
                             <button
@@ -228,10 +241,25 @@ function CharacterCard({
                             <StatCell base={stats.base.spd} bonus={stats.bonus.spd} />
                         </div>
 
-                        <div className="text-xs space-y-0.5">
-                            <div>⚔ {getEquipName(char.equipment.weapon) ?? "未装備"}</div>
-                            <div>🛡 {getEquipName(char.equipment.armor) ?? "未装備"}</div>
-                            <div>💍 {getEquipName(char.equipment.accessory) ?? "未装備"}</div>
+                        <div className="flex text-xs space-y-0.5 gap-2">
+                            <button
+                                onClick={() => setEquipSlot("weapon")}
+                                className="flex-1 text-left rounded px-1 py-0.5 bg-surface-2 hover:bg-surface-3 transition-colors"
+                            >
+                                ⚔ {getEquipName(char.equipment.weapon) ?? "未装備"}
+                            </button>
+                            <button
+                                onClick={() => setEquipSlot("armor")}
+                                className="flex-1 text-left rounded px-1 py-0.5 bg-surface-2 hover:bg-surface-3 transition-colors"
+                            >
+                                🛡 {getEquipName(char.equipment.armor) ?? "未装備"}
+                            </button>
+                            <button
+                                onClick={() => setEquipSlot("accessory")}
+                                className="flex-1 text-left rounded px-1 py-0.5 bg-surface-2 hover:bg-surface-3 transition-colors"
+                            >
+                                💍 {getEquipName(char.equipment.accessory) ?? "未装備"}
+                            </button>
                         </div>
                     </div>
                 )}
@@ -282,6 +310,17 @@ function CharacterCard({
                     )}
                 </div>
             </div>
+
+            {equipSlot && (
+                <EquipModal
+                    char={char}
+                    slot={equipSlot}
+                    characters={characters}
+                    equipment={invEquipment}
+                    equip={equip}
+                    onClose={() => setEquipSlot(null)}
+                />
+            )}
         </div>
     );
 }
@@ -292,10 +331,22 @@ export default function CharactersPage() {
     const characters = useCharacterStore((s) => s.characters);
     const socialize = useCharacterStore((s) => s.socialize);
     const upgradeStarRank = useCharacterStore((s) => s.upgradeStarRank);
+    const equip = useCharacterStore((s) => s.equip);
     const invEquipment = useInventoryStore((s) => s.equipment);
     const gold = useGameStore((s) => s.gold);
     const socializedThisCycle = useGameStore((s) => s.socializedThisCycle);
     const spendGold = useGameStore((s) => s.spendGold);
+
+    // 戦闘タブ=戦闘レベル順、親愛タブ=親愛度順（いずれも降順）。生産タブは元の順序。
+    const sortedCharacters = useMemo(() => {
+        if (tab === "battle") {
+            return [...characters].sort((a, b) => b.battleLevel - a.battleLevel);
+        }
+        if (tab === "affection") {
+            return [...characters].sort((a, b) => b.affectionLevel - a.affectionLevel);
+        }
+        return characters;
+    }, [characters, tab]);
 
     if (characters.length === 0) {
         return (
@@ -332,10 +383,11 @@ export default function CharactersPage() {
 
             {/* Cards */}
             <div className="flex flex-wrap gap-3">
-                {characters.map((char) => (
+                {sortedCharacters.map((char) => (
                     <CharacterCard
                         key={char.id}
                         char={char}
+                        characters={characters}
                         invEquipment={invEquipment}
                         gold={gold}
                         tab={tab}
@@ -343,6 +395,7 @@ export default function CharactersPage() {
                         socialize={socialize}
                         upgradeStarRank={upgradeStarRank}
                         spendGold={spendGold}
+                        equip={equip}
                     />
                 ))}
             </div>
