@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useGameStore, CYCLE_DURATION_MS } from "@/store/gameStore";
 import ProgressBar from "./ui/ProgressBar";
+import HeaderMenu from "./HeaderMenu";
 
 export default function Header() {
     const gold = useGameStore((s) => s.gold);
@@ -26,9 +27,9 @@ export default function Header() {
 
     return (
         <header className="shrink-0 bg-surface text-ink px-3  flex flex-col gap-1">
-            <div className="flex items-center justify-between text-sm">
-                <span className="w-16 font-bold text-gold">{gold.toLocaleString()}G</span>
-                <span className="relative inline-flex items-center justify-center w-30 h-17">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center text-sm">
+                <span className="justify-self-start min-w-0 font-bold text-gold">{gold.toLocaleString()}G</span>
+                <span className="justify-self-center relative inline-flex items-center justify-center w-30 h-17">
                     <Image
                         src="/holo_guild/guildRank.png"
                         alt="ギルドランク"
@@ -40,9 +41,12 @@ export default function Header() {
                         GR {guildRank}
                     </span>
                 </span>
-                <span className="w-16 text-ink">
-                    Cycle{cycleCount} ({minutesLeft}分）
-                </span>
+                <div className="justify-self-end min-w-0 flex items-center gap-1 text-ink">
+                    <span className="truncate">
+                        Cycle{cycleCount} ({minutesLeft}分）
+                    </span>
+                    <HeaderMenu />
+                </div>
             </div>
             <ProgressBar
                 pct={cycleProgress * 100}

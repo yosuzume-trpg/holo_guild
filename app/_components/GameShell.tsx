@@ -13,6 +13,7 @@ import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
 import { useFacilityStore } from '@/store/facilityStore'
 import { useManualProductionStore } from '@/store/manualProductionStore'
+import { useProductionFracStore } from '@/store/productionFracStore'
 import { getMaterial, MATERIALS } from '@/data/materials'
 import { getEquipment } from '@/data/equipment'
 import { RECIPES, getRecipe } from '@/data/recipes'
@@ -58,12 +59,16 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted) return
 
+    // 永続化された端数アキュムレータを復元（リロード/タブを閉じても引き継ぐ）
+    fracRef.current = { ...useProductionFracStore.getState().frac }
+
     // Apply offline catch-up on first mount
     const offlineMin = useGameStore.getState().getOfflineElapsed() / 60_000
     applyProduction(offlineMin)
     applyGuildWork(offlineMin)
     // 手動生産タスクの完了回収（オフライン・リロード後も含む。生産ページ外でも完了する）
     useManualProductionStore.getState().collectCompleted()
+    persistFrac()
     lastTickRef.current = Date.now()
 
     const id = setInterval(() => {
@@ -73,10 +78,16 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       applyProduction(elapsedMin)
       applyGuildWork(elapsedMin)
       useManualProductionStore.getState().collectCompleted()
+      persistFrac()
     }, 10_000)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted])
+
+  // 端数アキュムレータを永続ストアへ保存（ティックごと）
+  function persistFrac() {
+    useProductionFracStore.getState().setFrac({ ...fracRef.current })
+  }
 
   function applyProduction(elapsedMin: number) {
     if (elapsedMin <= 0) return

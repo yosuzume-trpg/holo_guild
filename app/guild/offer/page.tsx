@@ -84,7 +84,8 @@ export default function OfferPage() {
   }
 
   function handleGuaranteePick(char: CharacterMaster) {
-    useDungeonStore.getState().addRecruitPoints(activeRegion, -points)
+    // セレクト募集は閾値分(60)だけ消費し、超過分は残す
+    useDungeonStore.getState().addRecruitPoints(activeRegion, -GUARANTEE_THRESHOLD)
     setShowGuarantee(false)
     if (ownedMasterIds.has(char.id)) {
       addCertificate(char.id, 5)
