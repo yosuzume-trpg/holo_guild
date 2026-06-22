@@ -57,7 +57,8 @@ export const useGameStore = create<GameState>()(
             'seaweed', 'smallfish', 'mackerel', 'shrimp', 'tuna',
             'goldenwater', 'rainyjuice', 'tbubble', 'magicmilk', 'saltwater']
           const picked = materials[Math.floor(Math.random() * materials.length)]
-          bonuses[picked] = (get().harvestBonuses[picked] ?? 0) + 1
+          // 仕様: 豊作はそのサイクルのみ +1% 固定（累積しない）
+          bonuses[picked] = 1
         }
         set((s) => ({
           cycleCount: s.cycleCount + 1,

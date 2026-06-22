@@ -7,7 +7,7 @@ import Header from './Header'
 import TabNav from './TabNav'
 import SetupScreen from './SetupScreen'
 import { useGameStore } from '@/store/gameStore'
-import { CYCLE_DURATION_MS, PROD_STAR_BONUS_PER_RANK, PROD_CHAR_LEVEL_BONUS, PROD_DL_BONUS_PER_LEVEL, CRAFT_CHAR_LEVEL_BONUS, MERCHANT_CHAR_LEVEL_BONUS, MATERIAL_PRICE_MULTIPLIER } from '@/data/constants'
+import { CYCLE_DURATION_MS, CRAFT_CHAR_LEVEL_BONUS, MERCHANT_CHAR_LEVEL_BONUS, MATERIAL_PRICE_MULTIPLIER } from '@/data/constants'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
@@ -15,7 +15,7 @@ import { useFacilityStore } from '@/store/facilityStore'
 import { useManualProductionStore } from '@/store/manualProductionStore'
 import { useProductionFracStore } from '@/store/productionFracStore'
 import { getMaterial, MATERIALS } from '@/data/materials'
-import { getEquipment } from '@/data/equipment'
+import { getProductionRate, getDungeonRate } from '@/data/production'
 import { RECIPES, getRecipe } from '@/data/recipes'
 
 export default function GameShell({ children }: { children: React.ReactNode }) {
@@ -105,9 +105,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       if (asgn.type === 'dungeon') {
         const mat = getMaterial(asgn.materialId)
         if (!mat) continue
-        const dlBonus  = (asgn.level - 1) * PROD_DL_BONUS_PER_LEVEL
-        const starBonus = (char.starRank - 1) * PROD_STAR_BONUS_PER_RANK
-        const rate = mat.ratePerMin * (1 + dlBonus + starBonus)
+        const rate = getDungeonRate(mat, asgn.level, char.starRank)
         const key = `dungeon:${char.id}:${mat.id}`
         frac[key] = (frac[key] ?? 0) + rate * elapsedMin
         const whole = Math.floor(frac[key])
@@ -128,28 +126,13 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       const mat = getMaterial(asgn.materialId)
       if (!mat) continue
 
-      // Tool bonus from equipped tool (★1=base%, ★2=base×2%, ★3=base×4%, ...)
-      let toolBonus = 0
-      const toolId = char.equipment.tool
-      if (toolId) {
-        const toolInst = useInventoryStore.getState().equipment.find((e) => e.instanceId === toolId)
-        if (toolInst) {
-          const toolMaster = getEquipment(toolInst.masterId)
-          if (toolMaster) {
-            const facilityKey = `${asgn.type}Percent` as keyof typeof toolMaster.effects
-            const basePct = toolMaster.effects[facilityKey] ?? 0
-            if (basePct > 0) toolBonus = basePct * Math.pow(2, toolInst.starRank - 1) / 100
-          }
-        }
-      }
-
-      const facilityLevelKey = `${asgn.type}Level` as keyof typeof char
-      const charLevelBonus = ((char[facilityLevelKey] as number) - 1) * PROD_CHAR_LEVEL_BONUS
-      const starBonus = (char.starRank - 1) * PROD_STAR_BONUS_PER_RANK
-      const harvestBonus = (harvestBonuses[mat.id] ?? 0) / 100
-      // 施設の研究ボーナス(+1%/Lv)も生産量に加算（キャラ生産レベルと加算スタック）
+      // 研究ボーナス・キャラ生産レベル・凸(★)・装備道具を反映した実レート（豊作は含まない共通ロジック）
       const researchBonus = getResearchBonus(asgn.type)
-      const rate = mat.ratePerMin * (1 + toolBonus + harvestBonus + starBonus + charLevelBonus + researchBonus)
+      const equipmentList = useInventoryStore.getState().equipment
+      const baseRate = getProductionRate(char, mat, asgn.type, researchBonus, equipmentList)
+      // 豊作ボーナス(サイクルごとに変動)だけはここで加算
+      const harvestBonus = (harvestBonuses[mat.id] ?? 0) / 100
+      const rate = baseRate + mat.ratePerMin * harvestBonus
       const key = `${char.id}:${mat.id}`
       frac[key] = (frac[key] ?? 0) + rate * elapsedMin
 

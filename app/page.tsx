@@ -5,6 +5,7 @@ import { useCharacterStore } from '@/store/characterStore'
 import { useGameStore } from '@/store/gameStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { getCharacterMaster } from '@/data/characters'
+import { getMaterial } from '@/data/materials'
 import CharacterPortrait from '@/app/_components/ui/CharacterPortrait'
 
 export default function HomePage() {
@@ -13,7 +14,11 @@ export default function HomePage() {
   const cycleCount   = useGameStore((s) => s.cycleCount)
   const guildRank    = useGameStore((s) => s.guildRank)
   const socializedThisCycle = useGameStore((s) => s.socializedThisCycle)
+  const harvestBonuses = useGameStore((s) => s.harvestBonuses)
   const materials    = useInventoryStore((s) => s.materials)
+
+  // 今サイクルの豊作素材（+%）
+  const harvestEntries = Object.entries(harvestBonuses).filter(([, pct]) => pct > 0)
 
   // Characters with affection >= 5 are shown on the home screen
   const homeChars = characters.filter((c) => c.affectionLevel >= 5)
@@ -34,6 +39,15 @@ export default function HomePage() {
           <div className="text-ink-muted">素材在庫</div>
           <div className="text-ink text-right">{totalMaterialCount.toLocaleString()}個</div>
         </div>
+        {harvestEntries.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-line text-xs text-success flex items-start gap-1">
+            <span>🌾</span>
+            <span>
+              今サイクルの豊作:{' '}
+              {harvestEntries.map(([id, pct]) => `${getMaterial(id)?.name ?? id} +${pct}%`).join(' / ')}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Quick nav */}
