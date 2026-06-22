@@ -161,8 +161,16 @@ export const FACILITY_INITIAL_SLOTS = 3;
 /** 施設研究ボーナス（+1%/レベル） */
 export const FACILITY_RESEARCH_BONUS_PER_LEVEL = 0.01;
 
-/** 施設拡張・研究のゴールドコスト = FACILITY_UPGRADE_COST_FACTOR × レベル² */
+/**
+ * 施設拡張・研究のゴールドコスト（段階制・区分線形）。
+ * 階層 = ceil(レベル / FACILITY_UPGRADE_TIER_SIZE)
+ * コスト = FACILITY_UPGRADE_COST_FACTOR × レベル × 階層
+ * （区間内は線形で軽く、TIER_SIZE レベルごとに傾きが上がり終盤は高騰する）
+ */
 export const FACILITY_UPGRADE_COST_FACTOR = 500;
+
+/** コスト段階の区間幅（レベル）。このレベル数ごとに傾きが1段上がる */
+export const FACILITY_UPGRADE_TIER_SIZE = 10;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 生産ボーナス

@@ -4,7 +4,7 @@ import type { GuildFacility, GuildFacilityId, ProductionFacility, ProductionFaci
 import { useGameStore } from './gameStore'
 import {
   FACILITY_INITIAL_SLOTS, FACILITY_RESEARCH_BONUS_PER_LEVEL,
-  FACILITY_UPGRADE_COST_FACTOR, GR_FACILITY_LEVEL_CAP,
+  FACILITY_UPGRADE_COST_FACTOR, FACILITY_UPGRADE_TIER_SIZE, GR_FACILITY_LEVEL_CAP,
 } from '@/data/constants'
 
 const INITIAL_FACILITY: ProductionFacility = { expansionLevel: 0, researchLevel: 0 }
@@ -76,7 +76,8 @@ export const useFacilityStore = create<FacilityState>()(
 
       getResearchBonus: (facility) => get()[facility].researchLevel * FACILITY_RESEARCH_BONUS_PER_LEVEL,
 
-      getUpgradeCost: (level) => FACILITY_UPGRADE_COST_FACTOR * level * level,
+      getUpgradeCost: (level) =>
+        FACILITY_UPGRADE_COST_FACTOR * level * Math.ceil(level / FACILITY_UPGRADE_TIER_SIZE),
     }),
     { name: 'holo-guild-facilities' }
   )

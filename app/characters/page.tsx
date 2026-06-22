@@ -42,8 +42,8 @@ const ASSIGNMENT_LABEL: Record<string, string> = {
 type TabKey = "affection" | "battle" | "production";
 
 const TAB_LABELS: Record<TabKey, string> = {
-    affection: "親愛",
     battle: "戦闘",
+    affection: "親愛",
     production: "生産",
 };
 
@@ -287,7 +287,7 @@ function CharacterCard({
 }
 
 export default function CharactersPage() {
-    const [tab, setTab] = useState<TabKey>("affection");
+    const [tab, setTab] = useState<TabKey>("battle");
 
     const characters = useCharacterStore((s) => s.characters);
     const socialize = useCharacterStore((s) => s.socialize);
