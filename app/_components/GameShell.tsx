@@ -7,7 +7,7 @@ import Header from './Header'
 import TabNav from './TabNav'
 import SetupScreen from './SetupScreen'
 import { useGameStore } from '@/store/gameStore'
-import { CYCLE_DURATION_MS, CRAFT_CHAR_LEVEL_BONUS, MERCHANT_CHAR_LEVEL_BONUS, MATERIAL_PRICE_MULTIPLIER } from '@/data/constants'
+import { CYCLE_DURATION_MS } from '@/data/constants'
 import { useCharacterStore } from '@/store/characterStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
@@ -15,7 +15,7 @@ import { useFacilityStore } from '@/store/facilityStore'
 import { useManualProductionStore } from '@/store/manualProductionStore'
 import { useProductionFracStore } from '@/store/productionFracStore'
 import { getMaterial, MATERIALS } from '@/data/materials'
-import { getProductionRate, getDungeonRate } from '@/data/production'
+import { getProductionRate, getDungeonRate, getCraftRate, getMerchantRate } from '@/data/production'
 import { RECIPES, getRecipe } from '@/data/recipes'
 
 export default function GameShell({ children }: { children: React.ReactNode }) {
@@ -84,9 +84,9 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted])
 
-  // 端数アキュムレータを永続ストアへ保存（ティックごと）
+  // 端数アキュムレータを永続ストアへ保存（ティックごと）。lastTick はUIの進捗補間に使う。
   function persistFrac() {
-    useProductionFracStore.getState().setFrac({ ...fracRef.current })
+    useProductionFracStore.getState().setFrac({ ...fracRef.current }, lastTickRef.current)
   }
 
   function applyProduction(elapsedMin: number) {
@@ -101,7 +101,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       const asgn = char.assignment
       if (!asgn) continue
 
-      // Dungeon auto-grind: DL bonus (+5%/level) + star bonus
+      // Dungeon auto-grind: DL bonus (+1%/level, DL1=+0%) + star bonus
       if (asgn.type === 'dungeon') {
         const mat = getMaterial(asgn.materialId)
         if (!mat) continue
@@ -137,10 +137,10 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       frac[key] = (frac[key] ?? 0) + rate * elapsedMin
 
       // 経験値は整数個ドロップの有無に関わらず毎tick加算（取りこぼし防止）
-      // 価格倍率(MATERIAL_PRICE_MULTIPLIER)で割り、生産レベリングのペースを倍率適用前と同じに保つ
+      // 育成ペースは市場価格(price)とは独立に expValue 基準で算出し、全素材で一律に保つ
       useCharacterStore
         .getState()
-        .gainProductionExp(char.id, asgn.type, (mat.price * rate * elapsedMin) / MATERIAL_PRICE_MULTIPLIER)
+        .gainProductionExp(char.id, asgn.type, mat.expValue * rate * elapsedMin)
 
       const whole = Math.floor(frac[key])
       if (whole >= 1) {
@@ -165,8 +165,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
       if (asgn?.type === 'craft') {
         const recipe = getRecipe(asgn.recipeId)
         if (!recipe) continue
-        const charBonus = (char.craftLevel - 1) * CRAFT_CHAR_LEVEL_BONUS
-        const rate = 1 * (1 + getResearchBonus('craft') + charBonus)
+        const rate = getCraftRate(char.craftLevel, getResearchBonus('craft'))
         const key = `craft:${char.id}`
         frac[key] = (frac[key] ?? 0) + rate * elapsedMin
         const whole = Math.floor(frac[key])
@@ -187,8 +186,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
         const recipeDef = RECIPES.find((r) => r.id === asgn.sellMaterialId)
         const price = matDef?.price ?? recipeDef?.sellPrice
         if (price === undefined) continue
-        const charBonus = (char.merchantLevel - 1) * MERCHANT_CHAR_LEVEL_BONUS
-        const rate = 1 * (1 + getResearchBonus('merchant') + charBonus)
+        const rate = getMerchantRate(char.merchantLevel, getResearchBonus('merchant'))
         const key = `merchant:${char.id}`
         frac[key] = (frac[key] ?? 0) + rate * elapsedMin
         const whole = Math.floor(frac[key])

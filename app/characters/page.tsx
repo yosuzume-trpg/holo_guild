@@ -293,9 +293,12 @@ function CharacterCard({
                                 </div>
                             );
                         })}
-                        <div className="text-[10px] text-ink-muted pt-0.5">
-                            道具: {getEquipName(char.equipment.tool) ?? "未装備"}
-                        </div>
+                        <button
+                            onClick={() => setEquipSlot("tool")}
+                            className="w-full text-left text-xs rounded px-1 py-0.5 bg-surface-2 hover:bg-surface-3 transition-colors truncate"
+                        >
+                            🔧 {getEquipName(char.equipment.tool) ?? "未装備"}
+                        </button>
                     </div>
                 )}
 
@@ -343,7 +346,10 @@ export default function CharactersPage() {
             return [...characters].sort((a, b) => b.battleLevel - a.battleLevel);
         }
         if (tab === "affection") {
-            return [...characters].sort((a, b) => b.affectionLevel - a.affectionLevel);
+            return [...characters].sort(
+                (a, b) =>
+                    b.affectionLevel - a.affectionLevel || b.affectionPoints - a.affectionPoints,
+            );
         }
         return characters;
     }, [characters, tab]);

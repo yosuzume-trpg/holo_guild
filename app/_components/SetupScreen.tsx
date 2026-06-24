@@ -39,6 +39,13 @@ export default function SetupScreen() {
     equip(charId, 'weapon', weaponId)
     equip(charId, 'armor', armorId)
 
+    // 選択キャラと同地域から、重複しないランダムな3名を装備なしで追加
+    const bonusPool = getRegionCharacters(selectedRegion).filter((c) => c.id !== selectedChar.id)
+    const shuffled  = [...bonusPool].sort(() => Math.random() - 0.5)
+    for (const c of shuffled.slice(0, 3)) {
+      addCharacter(c.id)
+    }
+
     completeSetup(selectedRegion)
   }
 
@@ -139,6 +146,9 @@ export default function SetupScreen() {
               <div className="flex justify-between">
                 <span className="text-ink-muted">防具</span>
                 <span>冒険者の服</span>
+              </div>
+              <div className="text-xs text-ink-subtle pt-2 border-t border-line mt-2">
+                さらに同じ地域からランダムな仲間が3名加わります（装備なし）
               </div>
             </div>
 

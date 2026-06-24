@@ -11,14 +11,17 @@ import { persist } from 'zustand/middleware'
  */
 interface ProductionFracState {
   frac: Record<string, number>
-  setFrac: (frac: Record<string, number>) => void
+  /** 最後に frac を更新した生産ティックの時刻(ms)。UIで「次の1個まで」を滑らかに補間するのに使う。 */
+  lastTick: number
+  setFrac: (frac: Record<string, number>, lastTick: number) => void
 }
 
 export const useProductionFracStore = create<ProductionFracState>()(
   persist(
     (set) => ({
       frac: {},
-      setFrac: (frac) => set({ frac }),
+      lastTick: 0,
+      setFrac: (frac, lastTick) => set({ frac, lastTick }),
     }),
     { name: 'holo-guild-prod-frac' },
   ),

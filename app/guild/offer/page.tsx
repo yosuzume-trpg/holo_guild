@@ -6,9 +6,7 @@ import type { CharacterMaster, RegionId, Tendency } from '@/types/game'
 import { useGameStore } from '@/store/gameStore'
 import { useCharacterStore } from '@/store/characterStore'
 import { useDungeonStore } from '@/store/dungeonStore'
-import {
-  GUARANTEE_THRESHOLD, RECRUIT_BASE_COST, RECRUIT_COST_STEP, RECRUIT_STEP_COUNT,
-} from '@/data/constants'
+import { GUARANTEE_THRESHOLD, RECRUIT_COST } from '@/data/constants'
 import ProgressBar from '@/app/_components/ui/ProgressBar'
 import CharacterAvatar from '@/app/_components/ui/CharacterAvatar'
 
@@ -50,37 +48,50 @@ export default function OfferPage() {
   const [activeRegion, setActiveRegion] = useState<RegionId>(
     (visibleRegions[0]?.id ?? 'region1') as RegionId
   )
-  const [pullResult, setPullResult] = useState<PullResult | null>(null)
+  const [pullResults, setPullResults] = useState<PullResult[] | null>(null)
   const [showGuarantee, setShowGuarantee] = useState(false)
+
+  const PULL10_COUNT = 10
 
   const lockableRegions    = REGIONS.filter((r) => !unlockedRegions.includes(r.id))
   const pendingUnlockCount = Math.max(0, guildRank - unlockedRegions.length)
   const hasPendingUnlock   = pendingUnlockCount > 0 && lockableRegions.length > 0
 
-  const recruitCost    = RECRUIT_BASE_COST + RECRUIT_COST_STEP * Math.floor(characters.length / RECRUIT_STEP_COUNT)
+  const recruitCost    = RECRUIT_COST
   const regionChars    = getRegionCharacters(activeRegion)
   const ownedMasterIds = new Set(characters.map((c) => c.masterId))
   const points        = recruitPoints[activeRegion] ?? 0
   const canGuarantee  = points >= GUARANTEE_THRESHOLD
 
-  function handlePull() {
-    if (!spendGold(recruitCost)) return
-
+  // 1回分の抽選。owned は連続抽選中の所持状況を引き継ぐため呼び出し側から受け取り更新する
+  function pullOnce(owned: Set<string>): PullResult {
     addRecruitPoints(activeRegion, 1)
 
     const picked = regionChars[Math.floor(Math.random() * regionChars.length)]
-    const isNew  = !ownedMasterIds.has(picked.id)
+    const isNew  = !owned.has(picked.id)
 
-    let tendency: Tendency = 'standard'
     if (isNew) {
       const newCharId = addCharacter(picked.id)
       const newChar = useCharacterStore.getState().characters.find((c) => c.id === newCharId)
-      tendency = newChar?.tendency ?? 'standard'
-    } else {
-      addCertificate(picked.id, 1)
+      owned.add(picked.id)
+      return { char: picked, isNew: true, tendency: newChar?.tendency ?? 'standard', certCount: 0 }
     }
+    addCertificate(picked.id, 1)
+    return { char: picked, isNew: false, tendency: 'standard', certCount: 1 }
+  }
 
-    setPullResult({ char: picked, isNew, tendency, certCount: 1 })
+  function handlePull() {
+    if (!spendGold(recruitCost)) return
+    const owned = new Set(ownedMasterIds)
+    setPullResults([pullOnce(owned)])
+  }
+
+  function handlePull10() {
+    if (!spendGold(recruitCost * PULL10_COUNT)) return
+    const owned = new Set(ownedMasterIds)
+    const results: PullResult[] = []
+    for (let i = 0; i < PULL10_COUNT; i++) results.push(pullOnce(owned))
+    setPullResults(results)
   }
 
   function handleGuaranteePick(char: CharacterMaster) {
@@ -89,12 +100,12 @@ export default function OfferPage() {
     setShowGuarantee(false)
     if (ownedMasterIds.has(char.id)) {
       addCertificate(char.id, 5)
-      setPullResult({ char, isNew: false, tendency: 'standard', certCount: 5 })
+      setPullResults([{ char, isNew: false, tendency: 'standard', certCount: 5 }])
     } else {
       const newCharId = addCharacter(char.id)
       const newChar = useCharacterStore.getState().characters.find((c) => c.id === newCharId)
       const tendency = newChar?.tendency ?? 'standard'
-      setPullResult({ char, isNew: true, tendency, certCount: 0 })
+      setPullResults([{ char, isNew: true, tendency, certCount: 0 }])
     }
   }
 
@@ -163,13 +174,21 @@ export default function OfferPage() {
           </button>
         )}
 
-        {/* Pull button */}
-        <button
-          onClick={handlePull}
-          className="w-full bg-surface-2 hover:bg-surface-3 border border-line-strong hover:border-accent-strong text-ink font-bold py-3 rounded-lg transition-colors mb-6"
-        >
-          募集する（{recruitCost.toLocaleString()}G）
-        </button>
+        {/* Pull buttons */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={handlePull}
+            className="flex-1 bg-surface-2 hover:bg-surface-3 border border-line-strong hover:border-accent-strong text-ink font-bold py-3 rounded-lg transition-colors"
+          >
+            募集する（{recruitCost.toLocaleString()}G）
+          </button>
+          <button
+            onClick={handlePull10}
+            className="flex-1 bg-accent hover:bg-accent-strong border border-accent-strong text-ink font-bold py-3 rounded-lg transition-colors"
+          >
+            10連募集（{(recruitCost * PULL10_COUNT).toLocaleString()}G）
+          </button>
+        </div>
 
         {/* Character roster for this region */}
         <div className="text-xs text-ink-muted mb-2">このエリアのキャラクター</div>
@@ -209,34 +228,79 @@ export default function OfferPage() {
         </div>
       </div>
 
-      {/* Pull result modal */}
-      {pullResult && (
+      {/* Pull result modal (single) */}
+      {pullResults && pullResults.length === 1 && (
         <div
           className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-          onClick={() => setPullResult(null)}
+          onClick={() => setPullResults(null)}
         >
           <div
             className="bg-surface border border-line rounded-2xl p-6 w-72 text-center"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-xs text-ink-muted mb-1">
-              {pullResult.isNew ? '新しいメンバーが加わった！' : '証書を入手！'}
+              {pullResults[0].isNew ? '新しいメンバーが加わった！' : '証書を入手！'}
             </div>
-            <CharacterAvatar masterId={pullResult.char.id} size="xl" className="mx-auto my-3" />
+            <CharacterAvatar masterId={pullResults[0].char.id} size="xl" className="mx-auto my-3" />
             <div className="text-lg font-bold text-ink mb-1">
-              {pullResult.char.name}
+              {pullResults[0].char.name}
             </div>
-            {pullResult.isNew && (
-              <div className={`inline-block text-xs px-2 py-0.5 rounded-full text-white mb-3 ${TENDENCY_COLOR[pullResult.tendency]}`}>
-                {TENDENCY_LABEL[pullResult.tendency]}タイプ
+            {pullResults[0].isNew && (
+              <div className={`inline-block text-xs px-2 py-0.5 rounded-full text-white mb-3 ${TENDENCY_COLOR[pullResults[0].tendency]}`}>
+                {TENDENCY_LABEL[pullResults[0].tendency]}タイプ
               </div>
             )}
-            {!pullResult.isNew && (
-              <div className="text-sm text-accent-strong mb-3">証書 ×{pullResult.certCount}</div>
+            {!pullResults[0].isNew && (
+              <div className="text-sm text-accent-strong mb-3">証書 ×{pullResults[0].certCount}</div>
             )}
             <button
-              onClick={() => setPullResult(null)}
+              onClick={() => setPullResults(null)}
               className="w-full bg-surface-2 hover:bg-surface-3 text-ink py-2 rounded-lg text-sm transition-colors"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pull result modal (multi / 10連) */}
+      {pullResults && pullResults.length > 1 && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          onClick={() => setPullResults(null)}
+        >
+          <div
+            className="bg-surface border border-line rounded-2xl p-4 w-80 max-w-[90vw] max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-base font-bold text-ink mb-1 text-center">募集結果</div>
+            <div className="text-xs text-ink-muted mb-3 text-center">
+              新規 {pullResults.filter((r) => r.isNew).length}体 ／ 証書{' '}
+              {pullResults.reduce((sum, r) => sum + r.certCount, 0)}枚
+            </div>
+            <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2">
+              {pullResults.map((r, i) => (
+                <div
+                  key={i}
+                  className={`relative rounded-lg p-2 text-center border ${
+                    r.isNew ? 'bg-surface-2 border-accent-strong' : 'bg-surface-2 border-line-strong'
+                  }`}
+                >
+                  <CharacterAvatar masterId={r.char.id} size="md" className="mx-auto mb-1" />
+                  <div className="text-xs text-ink leading-tight truncate">{r.char.name}</div>
+                  {r.isNew ? (
+                    <div className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full text-white mt-0.5 ${TENDENCY_COLOR[r.tendency]}`}>
+                      NEW・{TENDENCY_LABEL[r.tendency]}
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-accent-strong mt-0.5">証書 ×{r.certCount}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setPullResults(null)}
+              className="mt-3 w-full bg-surface-2 hover:bg-surface-3 text-ink py-2 rounded-lg text-sm transition-colors"
             >
               閉じる
             </button>

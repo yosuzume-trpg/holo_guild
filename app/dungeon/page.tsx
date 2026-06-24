@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getDungeonMaterials, getMaterial } from "@/data/materials";
 import { getCharacterMaster } from "@/data/characters";
-import { getDungeonRate } from "@/data/production";
+import { getDungeonRate, getAutoProgress } from "@/data/production";
 import { useGameStore } from "@/store/gameStore";
 import { useCharacterStore } from "@/store/characterStore";
 import { useDungeonStore } from "@/store/dungeonStore";
 import { useFacilityStore } from "@/store/facilityStore";
 import { useInventoryStore } from "@/store/inventoryStore";
+import { useProductionFracStore } from "@/store/productionFracStore";
 import AssignedSlotList from "@/app/_components/facility/AssignedSlotList";
+import ItemTile from "@/app/_components/facility/ItemTile";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 import {
     BATTLE_GOLD_BOSS_FACTOR,
@@ -50,6 +52,17 @@ export default function DungeonPage() {
     // Auto-grind: characters assigned to dungeon
     const autoChars = characters.filter((c) => c.assignment?.type === "dungeon");
     const availableChars = characters.filter((c) => c.assignment === null);
+
+    // 自動周回の進捗（次の1個まで）補間用。配置がある間だけ100msで再描画。
+    const frac = useProductionFracStore((s) => s.frac);
+    const lastTick = useProductionFracStore((s) => s.lastTick);
+    const [, setTick] = useState(0);
+    const hasAuto = autoChars.length > 0;
+    useEffect(() => {
+        if (!hasAuto) return;
+        const id = setInterval(() => setTick((x) => x + 1), 100);
+        return () => clearInterval(id);
+    }, [hasAuto]);
 
     // 自動周回の配置枠（初期3・拡張で+1・上限GR×10）
     const slotCount = getSlotCount("dungeon");
@@ -194,6 +207,19 @@ export default function DungeonPage() {
                                     slots={slots}
                                     onAddSlot={openNew}
                                     onUnassign={(charId) => setAssignment(charId, null)}
+                                    slotProgress={(char) => {
+                                        const asgn = char.assignment as DungeonAssignment;
+                                        const mat = getMaterial(asgn.materialId);
+                                        if (!mat) return null;
+                                        // 自動周回は素材消費が無いのでブロックせず常に進行
+                                        const rate = getDungeonRate(mat, asgn.level, char.starRank);
+                                        return getAutoProgress(
+                                            frac[`dungeon:${char.id}:${mat.id}`] ?? 0,
+                                            rate,
+                                            lastTick,
+                                            Date.now(),
+                                        );
+                                    }}
                                     renderInfo={(char) => {
                                         const asgn = char.assignment as DungeonAssignment;
                                         const mat = getMaterial(asgn.materialId);
@@ -225,22 +251,13 @@ export default function DungeonPage() {
                                     <div className="text-sm text-ink-muted mb-2">素材在庫</div>
                                     <div className="grid grid-cols-2 gap-2">
                                         {availableMats.map((mat) => (
-                                            <div
+                                            <ItemTile
                                                 key={mat.id}
-                                                className="bg-surface border border-line rounded-lg p-2 text-sm flex justify-between items-center"
-                                            >
-                                                <span className="text-ink">
-                                                    {mat.name}
-                                                    {(ratePerMaterial[mat.id] ?? 0) > 0 && (
-                                                        <span className="ml-1 text-[10px] text-success">
-                                                            +{ratePerMaterial[mat.id].toFixed(2)}/分
-                                                        </span>
-                                                    )}
-                                                </span>
-                                                <span className="font-semibold text-ink">
-                                                    {inventoryMaterials[mat.id] ?? 0}
-                                                </span>
-                                            </div>
+                                                name={mat.name}
+                                                price={mat.price}
+                                                stock={inventoryMaterials[mat.id] ?? 0}
+                                                ratePerMin={ratePerMaterial[mat.id] ?? 0}
+                                            />
                                         ))}
                                     </div>
                                 </div>

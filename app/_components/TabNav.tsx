@@ -53,12 +53,16 @@ const SUB_TABS: Record<string, { label: string; href: string }[]> = {
         { label: "工芸", href: "/guild/craft" },
         { label: "鍛冶", href: "/guild/blacksmith" },
         { label: "仕立", href: "/guild/tailor" },
+        { label: "酒場", href: "/guild/tavern" },
     ],
     production: [
         { label: "農業", href: "/production/farm" },
         { label: "鉱業", href: "/production/mining" },
         { label: "漁業", href: "/production/fishing" },
         { label: "錬金", href: "/production/alchemy" },
+        // 商人・工芸は生産と密接なため生産文脈でも開けるようにする（別名ルート）
+        { label: "商人", href: "/production/merchant" },
+        { label: "工芸", href: "/production/craft" },
     ],
 };
 

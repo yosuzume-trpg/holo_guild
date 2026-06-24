@@ -44,14 +44,8 @@ export const GR_FACILITY_LEVEL_CAP = 10;
 // 募集
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** 募集の基本コスト（G） */
-export const RECRUIT_BASE_COST = 300;
-
-/** 募集コストの加算額（G）。RECRUIT_STEP_COUNT 人ごとに加算される */
-export const RECRUIT_COST_STEP = 500;
-
-/** 募集コストが増加するキャラクター数のステップ */
-export const RECRUIT_STEP_COUNT = 20;
+/** 募集の固定コスト（G）。所持数による上昇はしない */
+export const RECRUIT_COST = 500;
 
 /** セレクト募集が使えるようになる募集ポイント数 */
 export const GUARANTEE_THRESHOLD = 60;
@@ -99,6 +93,16 @@ export const EXP_PER_LEVEL = 100;
  * 経験値計算側ではこの倍率で割って相殺する。
  */
 export const MATERIAL_PRICE_MULTIPLIER = 5;
+
+/**
+ * 素材価格の希少度プライシング。
+ * 基準価格 = round((REF_RATE / ratePerMin) ^ SCARCITY_EXP)（×MULTIPLIER 前の基準値）。
+ * 生産レートが低い（=同じ個数を作るのに配置枠を多く要する）素材ほど価格が高くなり、
+ * 配置枠あたりの収入が上がる。REF_RATE は最速素材(小麦)のレートで、そこを基準価格1とする。
+ * SCARCITY_EXP=1 で従来の「枠あたり収入が一定」に一致。1.5 で最速⇔最遅が約5倍差。
+ */
+export const MATERIAL_PRICE_REF_RATE = 2.5;
+export const MATERIAL_PRICE_SCARCITY_EXP = 1.5;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ★ランク
@@ -209,6 +213,23 @@ export const MANUAL_CRAFT_MIN_MS = 500;
 
 /** 手動売却（商人）1個あたりの所要時間（ミリ秒）。金額によらず一律 */
 export const MANUAL_SELL_MS = 30000;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 酒場（納品クエスト）
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 納品クエストが切り替わるサイクル数（このサイクルごとに新しい3種を出題） */
+export const DELIVERY_ROTATION_CYCLES = 3;
+
+/** 1ローテーションで出題される納品クエスト数 */
+export const DELIVERY_QUEST_COUNT = 3;
+
+/** 納品報酬の倍率（報酬 = round(基準価格 × この値) × 納品数）。商人売却より高価。 */
+export const DELIVERY_REWARD_MULTIPLIER = 1.5;
+
+/** 納品数の下限・上限（この範囲からランダムに決定） */
+export const DELIVERY_QTY_MIN = 10;
+export const DELIVERY_QTY_MAX = 30;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 貿易

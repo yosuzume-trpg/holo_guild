@@ -14,6 +14,11 @@ interface Props {
     renderInfo: (char: CharacterInstance) => ReactNode;
     /** 解除ボタン手前に差し込む追加アクション（例: 生産施設の「手動」ボタン） */
     renderActions?: (char: CharacterInstance) => ReactNode;
+    /**
+     * 自動処理の「次の1個まで」進捗(0-1)を返す。number で進捗バー、null で待機中（薄表示）。
+     * 未指定ならバー自体を描画しない。
+     */
+    slotProgress?: (char: CharacterInstance) => number | null;
 }
 
 /**
@@ -26,6 +31,7 @@ export default function AssignedSlotList({
     onUnassign,
     renderInfo,
     renderActions,
+    slotProgress,
 }: Props) {
     // カードは固定幅 240px。横幅に応じて折り返す（伸縮しない）
     const cardClass = "w-44 rounded-lg p-2";
@@ -47,6 +53,8 @@ export default function AssignedSlotList({
                         );
                     }
                     const master = getCharacterMaster(char.masterId);
+                    // undefined=propなし(バー無し) / null=待機中(空トラック) / number=進捗
+                    const progress = slotProgress ? slotProgress(char) : undefined;
                     return (
                         <div
                             key={char.id}
@@ -70,6 +78,20 @@ export default function AssignedSlotList({
                                     解除
                                 </button>
                             </div>
+                            {/* 自動処理の「次の1個まで」進捗バー（null=待機中は薄い空トラック） */}
+                            {progress !== undefined && (
+                                <div
+                                    className="h-1 rounded-full bg-surface-3 overflow-hidden"
+                                    title={progress === null ? "待機中" : undefined}
+                                >
+                                    {progress !== null && (
+                                        <div
+                                            className="h-full bg-accent"
+                                            style={{ width: `${progress * 100}%` }}
+                                        />
+                                    )}
+                                </div>
+                            )}
                         </div>
                     );
                 })}

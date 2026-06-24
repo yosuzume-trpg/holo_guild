@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import type { ProductionFacilityId } from "@/types/game";
 import { MATERIALS_BY_FACILITY } from "@/data/materials";
-import { getProductionRate } from "@/data/production";
+import { getProductionRate, getAutoProgress } from "@/data/production";
 import { getCharacterMaster } from "@/data/characters";
 import {
     GR_FACILITY_LEVEL_CAP,
@@ -15,8 +15,10 @@ import { useCharacterStore } from "@/store/characterStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useFacilityStore } from "@/store/facilityStore";
 import { useManualProductionStore } from "@/store/manualProductionStore";
+import { useProductionFracStore } from "@/store/productionFracStore";
 import FacilityStatsBox from "@/app/_components/facility/FacilityStatsBox";
 import AssignedSlotList from "@/app/_components/facility/AssignedSlotList";
+import ItemTile from "@/app/_components/facility/ItemTile";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 import Modal from "@/app/_components/ui/Modal";
 
@@ -70,6 +72,9 @@ export default function ProductionFacilityPage({ facility }: Props) {
     const startTask = useManualProductionStore((s) => s.startTask);
     const collectCompleted = useManualProductionStore((s) => s.collectCompleted);
     const cancelTask = useManualProductionStore((s) => s.cancelTask);
+    // 自動生産の進捗（次の1個まで）を補間描画するための端数とティック時刻
+    const frac = useProductionFracStore((s) => s.frac);
+    const lastTick = useProductionFracStore((s) => s.lastTick);
 
     const [assigningSlot, setAssigningSlot] = useState<number | null>(null);
     const [editCharId, setEditCharId] = useState<string | null>(null);
@@ -88,15 +93,16 @@ export default function ProductionFacilityPage({ facility }: Props) {
         startTask(charId, matId, duration);
     }
 
-    // 進捗バーのアニメーションと完了回収。タスクがある間だけ動かす。
+    // 進捗バーのアニメーションと完了回収。手動タスク or 自動生産の配置がある間だけ動かす。
+    const hasAssigned = characters.some((c) => c.assignment?.type === facility);
     useEffect(() => {
-        if (Object.keys(manualTasks).length === 0) return;
+        if (Object.keys(manualTasks).length === 0 && !hasAssigned) return;
         const id = setInterval(() => {
             collectCompleted();
             setTick((x) => x + 1); // プログレスバー再描画
         }, 100);
         return () => clearInterval(id);
-    }, [manualTasks, collectCompleted]);
+    }, [manualTasks, collectCompleted, hasAssigned]);
 
     const slotCount = getSlotCount(facility);
     const researchBonus = getResearchBonus(facility);
@@ -204,6 +210,15 @@ export default function ProductionFacilityPage({ facility }: Props) {
                 slots={slots}
                 onAddSlot={(i) => setAssigningSlot(i)}
                 onUnassign={handleUnassign}
+                slotProgress={(char) => {
+                    const asgn = char.assignment;
+                    const matId = asgn?.type === facility ? asgn.materialId : "";
+                    const mat = materials.find((m) => m.id === matId);
+                    if (!mat) return null;
+                    // 生産は素材消費が無いのでブロックせず常に進行
+                    const rate = getProductionRate(char, mat, facility, researchBonus, equipment);
+                    return getAutoProgress(frac[`${char.id}:${mat.id}`] ?? 0, rate, lastTick, Date.now());
+                }}
                 renderInfo={(char) => {
                     const asgn = char.assignment;
                     const matId = asgn?.type === facility ? asgn.materialId : "";
@@ -265,31 +280,26 @@ export default function ProductionFacilityPage({ facility }: Props) {
             <div>
                 <div className="text-sm text-ink-muted mb-2">素材在庫</div>
                 <div className="grid grid-cols-2 gap-2">
-                    {materials.map((mat) => (
-                        <div
-                            key={mat.id}
-                            className={`bg-surface border rounded-lg p-2 text-sm flex justify-between items-center ${
-                                (harvestBonuses[mat.id] ?? 0) > 0 ? "border-success" : "border-line"
-                            }`}
-                        >
-                            <span className="text-ink">
-                                {mat.name}
-                                {(harvestBonuses[mat.id] ?? 0) > 0 && (
-                                    <span className="ml-1 text-[10px] text-success">
-                                        🌾+{harvestBonuses[mat.id]}%
-                                    </span>
-                                )}
-                                {(ratePerMaterial[mat.id] ?? 0) > 0 && (
-                                    <span className="ml-1 text-[10px] text-success">
-                                        +{ratePerMaterial[mat.id].toFixed(2)}/分
-                                    </span>
-                                )}
-                            </span>
-                            <span className="font-semibold text-ink">
-                                {inventoryMaterials[mat.id] ?? 0}
-                            </span>
-                        </div>
-                    ))}
+                    {materials.map((mat) => {
+                        const harvest = harvestBonuses[mat.id] ?? 0;
+                        return (
+                            <ItemTile
+                                key={mat.id}
+                                name={mat.name}
+                                price={mat.price}
+                                stock={inventoryMaterials[mat.id] ?? 0}
+                                ratePerMin={ratePerMaterial[mat.id] ?? 0}
+                                highlight={harvest > 0}
+                                badge={
+                                    harvest > 0 ? (
+                                        <span className="ml-1 text-[10px] text-success">
+                                            🌾+{harvest}%
+                                        </span>
+                                    ) : undefined
+                                }
+                            />
+                        );
+                    })}
                 </div>
             </div>
 
