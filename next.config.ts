@@ -3,13 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   basePath: '/holo_guild',
   images: {
-    // next/image はローカル画像でクエリ文字列を使う場合 localPatterns の許可が必要。
-    // 立ち絵のキャッシュバスティング（?v=N）を使うため、その分を明示的に許可する。
+    // このNextはローカル画像の既定 localPatterns が [{pathname:'**', search:''}] で
+    // クエリ文字列を一切許可しない。立ち絵のキャッシュバスティング（?v=N）を使うため上書きする。
     localPatterns: [
       // クエリなしの通常画像（アイコン・guildRank・フォールバック等）すべて
       { pathname: '/holo_guild/**', search: '' },
-      // 立ち絵はバージョン付き（utils/safeImage.ts の ASSET_VERSION と一致させること）
-      { pathname: '/holo_guild/characters/**', search: '?v=1' },
+      // 立ち絵は ?v=N 付き。search を省略して任意のバージョンを許可する
+      // （ASSET_VERSION を上げてもこの設定の変更は不要。対象は characters 配下のみ）。
+      { pathname: '/holo_guild/characters/**' },
     ],
   },
   // サーバー(nginx)が末尾スラッシュ付きで配信している。Next 既定では末尾スラッシュを
