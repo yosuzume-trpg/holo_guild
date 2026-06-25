@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { getCharacterMaster } from '@/data/characters'
 import { useGameStore } from '@/store/gameStore'
-import { withSafeSuffix } from '@/utils/safeImage'
+import { withSafeSuffix, ASSET_VERSION } from '@/utils/safeImage'
 
 // basePath(/holo_guild)配下のため src には basePath を含める（next/image の仕様）
 const BASE_PATH = '/holo_guild'
@@ -27,7 +27,7 @@ export default function CharacterPortrait({ masterId, className, priority, sizes
   const master = getCharacterMaster(masterId)
   const safeMode = useGameStore((s) => s.safeMode)
   const src = master?.portrait
-    ? `${BASE_PATH}${withSafeSuffix(master.portrait, safeMode)}`
+    ? `${BASE_PATH}${withSafeSuffix(master.portrait, safeMode)}?v=${ASSET_VERSION}`
     : FALLBACK
   return (
     <Image
