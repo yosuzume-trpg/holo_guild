@@ -217,9 +217,14 @@ export default function ProductionFacilityPage({ facility }: Props) {
                     if (!mat) return null;
                     // 生産は素材消費が無いのでブロックせず常に進行
                     const rate = getProductionRate(char, mat, facility, researchBonus, equipment);
-                    return getAutoProgress(frac[`${char.id}:${mat.id}`] ?? 0, rate, lastTick, Date.now());
+                    return getAutoProgress(
+                        frac[`${char.id}:${mat.id}`] ?? 0,
+                        rate,
+                        lastTick,
+                        Date.now(),
+                    );
                 }}
-                renderInfo={(char) => {
+                slotInfo={(char) => {
                     const asgn = char.assignment;
                     const matId = asgn?.type === facility ? asgn.materialId : "";
                     const mat = materials.find((m) => m.id === matId);
@@ -227,16 +232,12 @@ export default function ProductionFacilityPage({ facility }: Props) {
                     const rate = mat
                         ? getProductionRate(char, mat, facility, researchBonus, equipment)
                         : 0;
-                    return (
-                        <>
-                            {SKILL_LABEL[facility]}.{char[SKILL_KEY_MAP[facility]]}
-                            {mat && (
-                                <div className=" text-success">
-                                    {mat.name} ({rate.toFixed(2)}/分)
-                                </div>
-                            )}
-                        </>
-                    );
+                    return {
+                        level: `${SKILL_LABEL[facility]}.${char[SKILL_KEY_MAP[facility]]}`,
+                        itemName: mat?.name ?? "",
+                        rate: mat ? `${rate.toFixed(2)}/分` : "",
+                        stock: mat ? `在庫${inventoryMaterials[mat.id] ?? 0}` : "",
+                    };
                 }}
                 renderActions={(char) => {
                     const asgn = char.assignment;

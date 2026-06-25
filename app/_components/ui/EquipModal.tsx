@@ -37,6 +37,20 @@ export default function EquipModal({ char, slot, characters, equipment, equip, o
     return m?.slot === slot
   })
 
+  // 誰も装備していない（フリーな）装備を「同名＋同★ランク」でまとめる
+  const freeKey = (e: EquipmentInstance) => `${e.masterId}__${e.starRank}`
+  const freeGroups = new Map<string, EquipmentInstance[]>()
+  for (const e of slotItems) {
+    const isEquipped = char.equipment[slot] === e.instanceId
+    const usedByOther = equippedByOthers.has(e.instanceId)
+    if (isEquipped || usedByOther) continue
+    const arr = freeGroups.get(freeKey(e))
+    if (arr) arr.push(e)
+    else freeGroups.set(freeKey(e), [e])
+  }
+  // 各グループは最初に出現したときだけ1行で描画する
+  const renderedGroups = new Set<string>()
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50" onClick={onClose}>
       <div
@@ -66,7 +80,40 @@ export default function EquipModal({ char, slot, characters, equipment, equip, o
             const isEquipped  = char.equipment[slot] === e.instanceId
             const usedByOther = equippedByOthers.has(e.instanceId)
             const rankTooHigh = e.starRank > char.starRank
-            const isDisabled  = (usedByOther || rankTooHigh) && !isEquipped
+
+            // フリーな装備は同名＋同★でまとめて1行（個数を併記）にする
+            if (!isEquipped && !usedByOther) {
+              const key = freeKey(e)
+              if (renderedGroups.has(key)) return null
+              renderedGroups.add(key)
+              const count = freeGroups.get(key)?.length ?? 1
+              const isDisabled = rankTooHigh
+              return (
+                <button key={key}
+                  disabled={isDisabled}
+                  onClick={() => { if (!isDisabled) { equip(char.id, slot, e.instanceId); onClose() } }}
+                  className={`w-full rounded-lg px-3 py-2.5 text-left border transition-colors ${
+                    isDisabled
+                      ? 'border-line bg-surface opacity-50 cursor-not-allowed'
+                      : 'border-line bg-surface-2 hover:bg-surface-3 text-ink'}`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold">
+                      ★{e.starRank} {m?.name}
+                      {count > 1 && <span className="text-ink-subtle font-normal"> ×{count}</span>}
+                    </span>
+                    {rankTooHigh && (
+                      <span className="text-xs text-danger">★{char.starRank}以下のみ</span>
+                    )}
+                  </div>
+                  {m?.baseEffectLabel && (
+                    <div className="text-xs text-success mt-0.5">{m.baseEffectLabel}</div>
+                  )}
+                </button>
+              )
+            }
+
+            // 装備中（自分 or 他キャラ）は個別に表示
+            const isDisabled  = usedByOther && !isEquipped
             const otherChar   = usedByOther
               ? characters.find((c) => c.id !== char.id && Object.values(c.equipment).includes(e.instanceId))
               : null
@@ -86,9 +133,6 @@ export default function EquipModal({ char, slot, characters, equipment, equip, o
                   {isEquipped && <span className="text-xs text-accent-strong">装備中</span>}
                   {!isEquipped && usedByOther && (
                     <span className="text-xs text-ink-subtle">{otherName} が装備中</span>
-                  )}
-                  {!isEquipped && !usedByOther && rankTooHigh && (
-                    <span className="text-xs text-danger">★{char.starRank}以下のみ</span>
                   )}
                 </div>
                 {m?.baseEffectLabel && (

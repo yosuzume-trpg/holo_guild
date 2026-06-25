@@ -19,6 +19,7 @@ import ProgressBar from "@/app/_components/ui/ProgressBar";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 import EquipModal from "@/app/_components/ui/EquipModal";
 import AffectionBadge from "@/app/_components/ui/AffectionBadge";
+import CutinPopup from "@/app/_components/ui/CutinPopup";
 import RankBadge from "@/app/_components/ui/RankBadge";
 
 const TENDENCY_LABEL: Record<string, string> = {
@@ -58,9 +59,11 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
     const gold = useGameStore((s) => s.gold);
     const spendGold = useGameStore((s) => s.spendGold);
     const socializedThisCycle = useGameStore((s) => s.socializedThisCycle);
+    const safeMode = useGameStore((s) => s.safeMode);
     const equipment = useInventoryStore((s) => s.equipment);
 
     const [equipModal, setEquipModal] = useState<EquipmentSlot | null>(null);
+    const [showCutin, setShowCutin] = useState(false);
 
     const char = characters.find((c) => c.id === id);
     if (!char) {
@@ -268,7 +271,10 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
             {/* Socialize */}
             <div className="bg-surface border border-line rounded-lg p-3 mb-4">
                 <button
-                    onClick={() => socialize(char.id)}
+                    onClick={() => {
+                        socialize(char.id);
+                        if (!safeMode) setShowCutin(true);
+                    }}
                     disabled={socializedThisCycle}
                     className="w-full bg-pink-700 hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-2 rounded-lg transition-colors"
                 >
@@ -279,6 +285,10 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                           : `交遊する (+${AFFECTION_GAIN_MIN}〜${AFFECTION_GAIN_MIN + AFFECTION_GAIN_RANGE - 1} pt)`}
                 </button>
             </div>
+
+            {showCutin && (
+                <CutinPopup masterId={char.masterId} onClose={() => setShowCutin(false)} />
+            )}
         </div>
     );
 }

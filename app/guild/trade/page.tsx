@@ -25,14 +25,20 @@ export default function TradePage() {
   const addEquipment = useInventoryStore((s) => s.addEquipment)
 
   const [activePool, setActivePool] = useState<PoolKey>('weapon')
-  const [result, setResult] = useState<EquipmentMaster | null>(null)
+  const [result, setResult] = useState<EquipmentMaster[] | null>(null)
 
   const pool = POOLS.find((p) => p.key === activePool)!.pool
+  const TRADE_COST_10 = TRADE_COST * 10
 
-  function handlePull() {
-    if (!spendGold(TRADE_COST)) return
-    const picked = pool[Math.floor(Math.random() * pool.length)]
-    addEquipment(picked.id)
+  function handlePull(count: number) {
+    const cost = TRADE_COST * count
+    if (!spendGold(cost)) return
+    const picked: EquipmentMaster[] = []
+    for (let i = 0; i < count; i++) {
+      const item = pool[Math.floor(Math.random() * pool.length)]
+      addEquipment(item.id)
+      picked.push(item)
+    }
     setResult(picked)
   }
 
@@ -73,27 +79,52 @@ export default function TradePage() {
         </div>
       </div>
 
-      {/* Pull button */}
-      <button
-        onClick={handlePull}
-        disabled={gold < TRADE_COST}
-        className="w-full bg-surface-2 hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed border border-line-strong hover:border-accent-strong text-ink font-bold py-3 rounded-lg transition-colors mb-4"
-      >
-        {POOLS.find((p) => p.key === activePool)!.label}を引く（{TRADE_COST.toLocaleString()}G）
-      </button>
+      {/* Pull buttons */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => handlePull(1)}
+          disabled={gold < TRADE_COST}
+          className="flex-1 bg-surface-2 hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed border border-line-strong hover:border-accent-strong text-ink font-bold py-3 rounded-lg transition-colors"
+        >
+          1回引く（{TRADE_COST.toLocaleString()}G）
+        </button>
+        <button
+          onClick={() => handlePull(10)}
+          disabled={gold < TRADE_COST_10}
+          className="flex-1 bg-surface-2 hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed border border-line-strong hover:border-accent-strong text-ink font-bold py-3 rounded-lg transition-colors"
+        >
+          10連を引く（{TRADE_COST_10.toLocaleString()}G）
+        </button>
+      </div>
 
       {/* Result */}
-      {result && (
+      {result && result.length === 1 && (
         <div className="bg-surface border border-accent-strong rounded-xl p-4 text-center">
           <div className="text-xs text-accent-strong mb-1">入手！</div>
           <div className="text-xl font-bold text-ink mb-1">
-            {result.name}
-            {result.attribute && (
-              <span className="text-sm text-orange-400 ml-1">[{ATTRIBUTE_LABEL[result.attribute]}]</span>
+            {result[0].name}
+            {result[0].attribute && (
+              <span className="text-sm text-orange-400 ml-1">[{ATTRIBUTE_LABEL[result[0].attribute]}]</span>
             )}
           </div>
           <div className="text-xs text-ink-muted mb-2">★1</div>
-          <div className="text-sm text-success">{result.baseEffectLabel}</div>
+          <div className="text-sm text-success">{result[0].baseEffectLabel}</div>
+        </div>
+      )}
+      {result && result.length > 1 && (
+        <div className="bg-surface border border-accent-strong rounded-xl p-4">
+          <div className="text-xs text-accent-strong mb-2 text-center">{result.length}連 入手！</div>
+          <div className="grid grid-cols-2 gap-1">
+            {result.map((item, i) => (
+              <div key={i} className="text-xs text-ink flex items-center gap-1">
+                <span className="text-ink-subtle">・</span>
+                {item.name}
+                {item.attribute && (
+                  <span className="text-xs text-orange-400">[{ATTRIBUTE_LABEL[item.attribute]}]</span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -220,22 +220,20 @@ export default function DungeonPage() {
                                             Date.now(),
                                         );
                                     }}
-                                    renderInfo={(char) => {
+                                    slotInfo={(char) => {
                                         const asgn = char.assignment as DungeonAssignment;
                                         const mat = getMaterial(asgn.materialId);
                                         const rate = mat
                                             ? getDungeonRate(mat, asgn.level, char.starRank)
                                             : 0;
-                                        return (
-                                            <>
-                                                DL{asgn.level}
-                                                {mat && (
-                                                    <div className="text-success">
-                                                        {mat.name} ({rate.toFixed(2)}/分)
-                                                    </div>
-                                                )}
-                                            </>
-                                        );
+                                        return {
+                                            level: `DL${asgn.level}`,
+                                            itemName: mat?.name ?? "",
+                                            rate: mat ? `${rate.toFixed(2)}/分` : "",
+                                            stock: mat
+                                                ? `在庫${inventoryMaterials[mat.id] ?? 0}`
+                                                : "",
+                                        };
                                     }}
                                     renderActions={(char) => (
                                         <button

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import CharacterPortrait from "@/app/_components/ui/CharacterPortrait";
 import EquipModal from "@/app/_components/ui/EquipModal";
+import CutinPopup from "@/app/_components/ui/CutinPopup";
 import AffectionBadge from "@/app/_components/ui/AffectionBadge";
 import RankBadge from "@/app/_components/ui/RankBadge";
 import { useCharacterStore } from "@/store/characterStore";
@@ -131,11 +132,15 @@ function CharacterCard({
 }: CardProps) {
     const master = getCharacterMaster(char.masterId);
     const [equipSlot, setEquipSlot] = useState<EquipmentSlot | null>(null);
+    const [showCutin, setShowCutin] = useState(false);
+    const safeMode = useGameStore((s) => s.safeMode);
 
     function getEquipName(instanceId: string | null): string | null {
         if (!instanceId) return null;
         const inst = invEquipment.find((e) => e.instanceId === instanceId);
-        return inst ? (getEquipment(inst.masterId)?.name ?? null) : null;
+        if (!inst) return null;
+        const name = getEquipment(inst.masterId)?.name;
+        return name ? `★${inst.starRank} ${name}` : null;
     }
 
     const certCost = Math.pow(2, char.starRank - 1);
@@ -186,7 +191,10 @@ function CharacterCard({
                         />
                         <div className="flex flex-col gap-1">
                             <button
-                                onClick={() => socialize(char.id)}
+                                onClick={() => {
+                                    socialize(char.id);
+                                    if (!safeMode) setShowCutin(true);
+                                }}
                                 disabled={socializedThisCycle || char.socializedThisCycle}
                                 className="px-1.5 py-0.5 rounded bg-pink-800 hover:bg-pink-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
                             >
@@ -323,6 +331,10 @@ function CharacterCard({
                     equip={equip}
                     onClose={() => setEquipSlot(null)}
                 />
+            )}
+
+            {showCutin && (
+                <CutinPopup masterId={char.masterId} onClose={() => setShowCutin(false)} />
             )}
         </div>
     );

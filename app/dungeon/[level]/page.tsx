@@ -358,7 +358,11 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             currentTurnIndex: 0,
             // 先頭スロットが敵なら enemy-action として開始し、useEffect が処理する
             battlePhase:
-                enemies.length === 0 ? "result" : turnOrder[0]?.isPlayer ? "player-action" : "enemy-action",
+                enemies.length === 0
+                    ? "result"
+                    : turnOrder[0]?.isPlayer
+                      ? "player-action"
+                      : "enemy-action",
             log: [`ダンジョン Lv.${dl} 開始！`],
         };
         setBs(initialBs);
@@ -431,7 +435,11 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             currentTurnIndex: 0,
             // 先頭スロットが敵なら enemy-action として開始し、useEffect が処理する
             battlePhase:
-                enemies.length === 0 ? "result" : turnOrder[0]?.isPlayer ? "player-action" : "enemy-action",
+                enemies.length === 0
+                    ? "result"
+                    : turnOrder[0]?.isPlayer
+                      ? "player-action"
+                      : "enemy-action",
             log: newLog,
         };
         return next;
@@ -1024,9 +1032,7 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                             className="bg-surface-2 hover:bg-surface-3 border border-line-strong hover:border-accent-strong rounded-2xl p-6 text-center transition-colors"
                         >
                             <div className="text-3xl mb-2">{BRANCH_ICON[opt]}</div>
-                            <div className="text-sm font-bold text-ink">
-                                {BRANCH_LABEL[opt]}
-                            </div>
+                            <div className="text-sm font-bold text-ink">{BRANCH_LABEL[opt]}</div>
                         </button>
                     ))}
                 </div>
@@ -1343,7 +1349,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                         {actingEnemy ? (
                             <>
                                 🔴 {actingEnemy.type}
-                                {actingEnemy.attribute && `[${ATTR_LABEL[actingEnemy.attribute]}]`}{" "}
+                                {actingEnemy.attribute &&
+                                    `[${ATTR_LABEL[actingEnemy.attribute]}]`}{" "}
                                 の行動...
                             </>
                         ) : (
