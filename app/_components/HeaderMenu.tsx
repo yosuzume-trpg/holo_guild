@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useGameStore } from '@/store/gameStore'
 
 // 全ストアの永続化キーはこの接頭辞（holo-guild-game / -characters / -inventory /
 // -facilities / -dungeon / -manual-prod）。接頭辞で一括して入出力する。
@@ -35,6 +36,8 @@ function exportSave() {
 export default function HeaderMenu() {
   const [open, setOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const safeMode = useGameStore((s) => s.safeMode)
+  const toggleSafeMode = useGameStore((s) => s.toggleSafeMode)
 
   function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -92,6 +95,15 @@ export default function HeaderMenu() {
               className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface-2 border-t border-line transition-colors"
             >
               データをインポート
+            </button>
+            <button
+              onClick={() => toggleSafeMode()}
+              className="w-full flex items-center justify-between px-3 py-2 text-sm text-ink hover:bg-surface-2 border-t border-line transition-colors"
+            >
+              <span>セーフモード</span>
+              <span className={`text-xs font-bold ${safeMode ? 'text-success' : 'text-ink-subtle'}`}>
+                {safeMode ? 'ON' : 'OFF'}
+              </span>
             </button>
           </div>
         </>

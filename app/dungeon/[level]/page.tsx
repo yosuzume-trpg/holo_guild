@@ -2,7 +2,14 @@
 
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { CharacterInstance, EnemyInstance, Buff, StageType, Attribute } from "@/types/game";
+import type {
+    CharacterInstance,
+    EnemyInstance,
+    EquipmentInstance,
+    Buff,
+    StageType,
+    Attribute,
+} from "@/types/game";
 import { getCharacterMaster } from "@/data/characters";
 import { getEquipment, EQUIPMENT_MASTERS } from "@/data/equipment";
 import { getDungeonMaterials, getMaterial } from "@/data/materials";
@@ -156,11 +163,17 @@ function makeEnemies(stageType: StageType, dl: number): EnemyInstance[] {
         makeEnemy(randomEnemyType(), dl, Math.random() < ENEMY_NEUTRAL_CHANCE ? null : attr),
     );
 }
-function buildTurnOrder(partyIds: string[], chars: CharacterInstance[], enemies: EnemyInstance[]) {
+function buildTurnOrder(
+    partyIds: string[],
+    chars: CharacterInstance[],
+    enemies: EnemyInstance[],
+    invEquipment: EquipmentInstance[],
+) {
     const all: { id: string; spd: number; isPlayer: boolean }[] = [
         ...partyIds.map((id) => {
             const c = chars.find((x) => x.id === id)!;
-            return { id, spd: c.stats.spd * c.battleLevel, isPlayer: true };
+            // 行動順は★・装備込みの総合素早さで判定（calcCharacterStats に一本化）
+            return { id, spd: calcCharacterStats(c, invEquipment).total.spd, isPlayer: true };
         }),
         ...enemies.flatMap((e) => {
             const slots = [{ id: e.id, spd: e.stats.spd, isPlayer: false }];
@@ -329,7 +342,8 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
 
         const stageType = stageTypes[0];
         const enemies = stageType === "battle" ? makeEnemies(stageType, dl) : [];
-        const turnOrder = enemies.length > 0 ? buildTurnOrder(partyIds, characters, enemies) : [];
+        const turnOrder =
+            enemies.length > 0 ? buildTurnOrder(partyIds, characters, enemies, invEquipment) : [];
         const initialBs: BattleState = {
             dungeonLevel: dl,
             stageTypes,
@@ -402,7 +416,9 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                 ? makeEnemies(nextType, dl)
                 : [];
         const turnOrder =
-            enemies.length > 0 ? buildTurnOrder(state.partyIds, characters, enemies) : [];
+            enemies.length > 0
+                ? buildTurnOrder(state.partyIds, characters, enemies, invEquipment)
+                : [];
 
         const next: BattleState = {
             ...state,

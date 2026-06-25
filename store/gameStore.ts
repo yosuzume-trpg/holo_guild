@@ -16,8 +16,10 @@ interface GameState {
   isSetupComplete: boolean
   harvestBonuses: Record<string, number>
   socializedThisCycle: boolean
+  safeMode: boolean
 
   addGold: (amount: number) => void
+  toggleSafeMode: () => void
   spendGold: (amount: number) => boolean
   advanceCycle: () => void
   markSocialized: () => void
@@ -40,8 +42,11 @@ export const useGameStore = create<GameState>()(
       isSetupComplete: false,
       harvestBonuses: {},
       socializedThisCycle: false,
+      safeMode: false,
 
       addGold: (amount) => set((s) => ({ gold: s.gold + amount })),
+
+      toggleSafeMode: () => set((s) => ({ safeMode: !s.safeMode })),
 
       spendGold: (amount) => {
         if (get().gold < amount) return false

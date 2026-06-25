@@ -22,7 +22,7 @@ export interface CalcedStats {
  * これは唯一のステータス計算ロジックであり、キャラ画面表示とダンジョン戦闘の
  * 両方がこの関数を参照する（表示と実戦の数値を一致させるため）。
  *
- * base  = ステータス × 戦闘Lv
+ * base  = 累積ステータス（各レベル上昇の合計。char.stats そのもの）
  * total = base に下記の倍率を乗じて切り捨てた値
  *   - キャラ★ボーナス: (★ランク-1) × COMBAT_STAR_BONUS_PER_RANK を全ステに加算
  *   - 装備3枠(武器/防具/アクセ)の %効果。★ランクで効果が増加する
@@ -35,14 +35,13 @@ export function calcCharacterStats(
   char: CharacterInstance,
   invEquipment: EquipmentInstance[],
 ): CalcedStats {
-  const lv = char.battleLevel
   const base: CharacterStats = {
-    hp:   char.stats.hp   * lv,
-    atk:  char.stats.atk  * lv,
-    def:  char.stats.def  * lv,
-    mag:  char.stats.mag  * lv,
-    mdef: char.stats.mdef * lv,
-    spd:  char.stats.spd  * lv,
+    hp:   char.stats.hp,
+    atk:  char.stats.atk,
+    def:  char.stats.def,
+    mag:  char.stats.mag,
+    mdef: char.stats.mdef,
+    spd:  char.stats.spd,
   }
 
   const starBonus = (char.starRank - 1) * COMBAT_STAR_BONUS_PER_RANK

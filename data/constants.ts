@@ -54,7 +54,10 @@ export const GUARANTEE_THRESHOLD = 60;
 // キャラクター基本ステータス・傾向ごとのランダム幅
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** キャラクターの基本ステータス（傾向補正・ランダム変動前の中央値） */
+/**
+ * 1レベルあたりのステータス上昇量の中央値。
+ * 戦闘ステータスはレベルアップのたびにこの値 ± ブレ（＋傾向ボーナス）ぶん加算され、累積する。
+ */
 export const CHAR_BASE_STATS: CharacterStats = {
     hp: 200,
     atk: 50,
@@ -65,15 +68,29 @@ export const CHAR_BASE_STATS: CharacterStats = {
 };
 
 /**
- * 傾向ごとのステータスランダム幅
- * 実際の値は base ± floor(rand() * variance) で決まる
+ * 1レベル上昇あたりの対称ランダム幅（全傾向共通）。
+ * 実際の上昇量 = CHAR_BASE_STATS ± floor(rand() * variance)（＋傾向ボーナス）。
  */
-export const CHAR_STAT_VARIANCE: Record<Tendency, Partial<CharacterStats>> = {
-    standard: { hp: 15, atk: 5, def: 5, mag: 5, mdef: 5, spd: 1 }, // バランス型
-    attack: { hp: 15, atk: 15, def: 2, mag: 2, mdef: 2, spd: 1 }, // 攻撃寄り
-    magic: { hp: 15, atk: 2, def: 2, mag: 15, mdef: 2, spd: 1 }, // 魔力寄り
-    defense: { hp: 20, atk: 2, def: 15, mag: 2, mdef: 15, spd: 1 }, // 防御・HP寄り
-    speed: { hp: 15, atk: 5, def: 5, mag: 5, mdef: 5, spd: 3 }, // 速度寄り
+export const CHAR_LEVEL_VARIANCE: CharacterStats = {
+    hp: 15,
+    atk: 5,
+    def: 5,
+    mag: 5,
+    mdef: 5,
+    spd: 1,
+};
+
+/**
+ * 傾向ごとの得意ステータスへの「上方ボーナス」。
+ * 1レベル上昇ごとに 0〜max の一様乱数を得意ステへ加算する（片側＝下振れしない）。
+ * 各値は基準値の約+5%相当で揃えている（atk 5/50, hp 20/200, spd 1/10）。
+ */
+export const CHAR_TENDENCY_BONUS: Record<Tendency, Partial<CharacterStats>> = {
+    standard: {}, // バランス型（ボーナスなし）
+    attack: { atk: 5 }, // 攻撃寄り
+    magic: { mag: 5 }, // 魔力寄り
+    defense: { hp: 20, def: 5, mdef: 5 }, // 防御・HP寄り
+    speed: { spd: 1 }, // 速度寄り
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

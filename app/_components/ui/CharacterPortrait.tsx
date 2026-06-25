@@ -1,5 +1,9 @@
+'use client'
+
 import Image from 'next/image'
 import { getCharacterMaster } from '@/data/characters'
+import { useGameStore } from '@/store/gameStore'
+import { withSafeSuffix } from '@/utils/safeImage'
 
 // basePath(/holo_guild)配下のため src には basePath を含める（next/image の仕様）
 const BASE_PATH = '/holo_guild'
@@ -15,13 +19,16 @@ interface Props {
 }
 
 /**
- * キャラクターの立ち絵を表示する。master.portrait（/characters/{id}.png）を参照し、
+ * キャラクターの立ち絵を表示する。master.portrait（/characters/{id}.webp）を参照し、
  * 未定義時はデフォルト立ち絵にフォールバックする。
  * 親要素に `relative` とサイズ指定が必要（next/image の fill を使用）。
  */
 export default function CharacterPortrait({ masterId, className, priority, sizes = '160px' }: Props) {
   const master = getCharacterMaster(masterId)
-  const src = master?.portrait ? `${BASE_PATH}${master.portrait}` : FALLBACK
+  const safeMode = useGameStore((s) => s.safeMode)
+  const src = master?.portrait
+    ? `${BASE_PATH}${withSafeSuffix(master.portrait, safeMode)}`
+    : FALLBACK
   return (
     <Image
       src={src}

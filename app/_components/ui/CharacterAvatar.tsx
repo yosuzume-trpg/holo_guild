@@ -1,6 +1,10 @@
+'use client'
+
 import type { CSSProperties } from 'react'
 import Image from 'next/image'
 import { getCharacterMaster } from '@/data/characters'
+import { useGameStore } from '@/store/gameStore'
+import { withSafeSuffix } from '@/utils/safeImage'
 
 // basePath(/holo_guild)配下のため src には basePath を含める（next/image の仕様）
 const BASE_PATH = '/holo_guild'
@@ -42,7 +46,10 @@ interface Props {
 /** キャラクターのアイコン（立ち絵の頭部を流用）。各ページで共通利用する。 */
 export default function CharacterAvatar({ masterId, size = 'md', className = '' }: Props) {
   const master = getCharacterMaster(masterId)
-  const src = master?.portrait ? `${BASE_PATH}${master.portrait}` : FALLBACK
+  const safeMode = useGameStore((s) => s.safeMode)
+  const src = master?.portrait
+    ? `${BASE_PATH}${withSafeSuffix(master.portrait, safeMode)}`
+    : FALLBACK
   return (
     <div
       className={`relative overflow-hidden rounded-full bg-surface-3 shrink-0 ${SIZE_CLASS[size]} ${className}`}
