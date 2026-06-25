@@ -20,6 +20,7 @@ import { useInventoryStore } from "@/store/inventoryStore";
 import { useDungeonStore } from "@/store/dungeonStore";
 import type { StoredBattle } from "@/store/dungeonStore";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
+import EnemyAvatar from "@/app/_components/ui/EnemyAvatar";
 import { calcCharacterStats, calcMaxHp } from "@/utils/characterStats";
 import {
     ATTR_ADVANTAGE,
@@ -79,6 +80,14 @@ const ATTR_COLOR: Record<string, string> = {
 };
 
 type EnemyTypeKey = "standard" | "attack" | "magic" | "defense" | "elite" | "boss";
+const ENEMY_TYPE_LABEL: Record<EnemyTypeKey, string> = {
+    standard: "標準",
+    attack: "攻撃",
+    magic: "魔法",
+    defense: "防御",
+    elite: "強敵",
+    boss: "ボス",
+};
 function scaleStats(base: (typeof ENEMY_BASE_STATS)[keyof typeof ENEMY_BASE_STATS]) {
     return (d: number): EnemyInstance["stats"] => ({
         hp: base.hp * d,
@@ -1074,12 +1083,15 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
             <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
                 {/* Enemies */}
                 {bs.enemies.length > 0 && (
-                    <div>
-                        <div className="text-xs text-ink-subtle mb-1">敵</div>
-                        <div className="flex gap-2 flex-wrap">
+                    <div className="rounded-xl border border-line-strong bg-surface/60 overflow-hidden">
+                        <div className="flex items-center gap-1 px-2.5 py-1 bg-accent-strong/15 border-b border-line-strong text-xs font-bold text-accent-strong">
+                            👹 敵
+                        </div>
+                        <div className="flex flex-wrap gap-2 p-2 justify-center">
                             {bs.enemies.map((e) => {
                                 const isTarget = action === "attack" || action === "magic";
                                 const isActing = e.id === actingEnemyId;
+                                const hpPct = (e.hp / e.maxHp) * 100;
                                 return (
                                     <button
                                         key={e.id}
@@ -1089,9 +1101,9 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                             handleAttack(e.id, action === "magic")
                                         }
                                         disabled={e.hp <= 0 || !isTarget}
-                                        className={`relative rounded-lg p-2 text-center min-w-20 border transition-all ${
+                                        className={`relative flex flex-col items-center gap-1 w-28 rounded-lg border p-2 transition-all ${
                                             e.hp <= 0
-                                                ? "opacity-30 border-line bg-surface"
+                                                ? "opacity-40 border-line bg-surface"
                                                 : isTarget
                                                   ? "border-accent-strong bg-surface-2 hover:bg-surface-3 cursor-pointer"
                                                   : isActing
@@ -1100,26 +1112,42 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                         }`}
                                     >
                                         {isActing && (
-                                            <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-danger px-1.5 py-0.5 rounded-full whitespace-nowrap shadow">
-                                                ⚡行動中
+                                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-white bg-danger px-1 rounded-full shadow">
+                                                ⚡
                                             </span>
                                         )}
-                                        <div className="text-xs text-ink">
-                                            {e.type}
-                                            {e.attribute && (
-                                                <span className={`ml-1 ${ATTR_COLOR[e.attribute]}`}>
-                                                    [{ATTR_LABEL[e.attribute]}]
-                                                </span>
-                                            )}
+                                        <div className="text-xs font-semibold text-ink truncate max-w-full">
+                                            {ENEMY_TYPE_LABEL[e.type as EnemyTypeKey] ?? e.type}
                                         </div>
-                                        <div className="text-xs text-ink-muted mt-0.5">
-                                            {e.hp}/{e.maxHp}
-                                        </div>
-                                        <div className="w-full h-1 bg-surface-2 rounded mt-1">
-                                            <div
-                                                className="h-full bg-red-500 rounded"
-                                                style={{ width: `${(e.hp / e.maxHp) * 100}%` }}
+                                        <div className="relative">
+                                            <EnemyAvatar
+                                                enemy={e}
+                                                size="xl"
+                                                className={e.hp <= 0 ? "grayscale" : ""}
                                             />
+                                            <div className="absolute -bottom-1 -right-1 flex flex-col gap-0.5 items-end">
+                                                <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-app/90 border border-line shadow-sm">
+                                                    ◆
+                                                    <span
+                                                        className={
+                                                            e.attribute
+                                                                ? ATTR_COLOR[e.attribute]
+                                                                : "text-ink-subtle"
+                                                        }
+                                                    >
+                                                        {e.attribute ? ATTR_LABEL[e.attribute] : "無"}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="relative w-full h-4 rounded bg-surface-2 overflow-hidden">
+                                            <div
+                                                className="absolute inset-y-0 left-0 rounded bg-red-500 transition-all"
+                                                style={{ width: `${hpPct}%` }}
+                                            />
+                                            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-ink [text-shadow:0_0_2px_rgb(255_255_255)]">
+                                                {e.hp}/{e.maxHp}
+                                            </span>
                                         </div>
                                     </button>
                                 );
@@ -1128,10 +1156,34 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                     </div>
                 )}
 
+                {/* Battle log (RPG風ウィンドウ) */}
+                <div className="rounded-lg border-2 border-line-strong bg-ink shadow-md p-1">
+                    <div className="rounded-md border border-accent-strong/40 px-2 py-1.5">
+                        <div className="text-[11px] font-bold text-accent-soft border-b border-accent-strong/30 pb-1 mb-1">
+                            📜 ログ
+                        </div>
+                        <div className="h-28 overflow-y-auto">
+                            {bs.log
+                                .slice(-10)
+                                .reverse()
+                                .map((line, i) => (
+                                    <div
+                                        key={i}
+                                        className={`text-xs leading-5 ${i === 0 ? "text-surface font-medium" : "text-surface-2"}`}
+                                    >
+                                        {line}
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Party */}
-                <div>
-                    <div className="text-xs text-ink-subtle mb-1">パーティ</div>
-                    <div className="space-y-1.5">
+                <div className="rounded-xl border border-line-strong bg-surface/60 overflow-hidden">
+                    <div className="flex items-center gap-1 px-2.5 py-1 bg-accent-strong/15 border-b border-line-strong text-xs font-bold text-accent-strong">
+                        🛡 パーティ
+                    </div>
+                    <div className="flex flex-wrap gap-2 p-2 justify-center">
                         {bs.partyIds.map((charId) => {
                             const char = characters.find((c) => c.id === charId)!;
                             if (!char) return null;
@@ -1143,64 +1195,87 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                                 slot?.id === charId && bs.battlePhase === "player-action";
                             const buffs = bs.partyBuffs[charId] ?? [];
                             const isItemTarget = action === "item-target";
-                            const weaponName = getEquipName(char.equipment.weapon);
-                            const armorName = getEquipName(char.equipment.armor);
+                            const atkAttr = charWeaponAttr(char);
+                            const defAttr = charArmorAttr(char);
+                            const buffShort: Record<string, string> = {
+                                atk: "攻",
+                                def: "防",
+                                mag: "魔",
+                            };
                             return (
                                 <button
                                     key={charId}
                                     onClick={() => isItemTarget && hp > 0 && handleUseItem(charId)}
                                     disabled={hp <= 0 || !isItemTarget}
-                                    className={`w-full rounded-lg p-2.5 border text-left transition-all ${
+                                    className={`relative flex flex-col items-center gap-1 w-28 rounded-lg border p-2 transition-all ${
                                         hp <= 0
-                                            ? "opacity-30 border-line bg-surface"
+                                            ? "opacity-40 border-line bg-surface"
                                             : isItemTarget
                                               ? "border-accent-strong bg-surface-2 hover:bg-surface-3 cursor-pointer"
                                               : isActing
-                                                ? "border-accent-strong bg-accent-soft ring-2 ring-accent-strong shadow-md scale-[1.02]"
+                                                ? "border-accent-strong bg-accent-soft ring-2 ring-accent-strong shadow-md scale-[1.03]"
                                                 : "border-line bg-surface"
                                     }`}
                                 >
-                                    <div className="flex items-center justify-between mb-1">
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                            <span className="text-sm font-semibold text-ink truncate">
-                                                {master?.name}
-                                            </span>
-                                            <span
-                                                className={`text-xs shrink-0 ${TENDENCY_COLOR[char.tendency]}`}
-                                            >
-                                                {TENDENCY_LABEL[char.tendency]}
-                                            </span>
-                                            {isActing && (
-                                                <span className="text-[10px] font-bold text-white bg-accent-strong px-1.5 py-0.5 rounded-full shrink-0">
-                                                    ⚡行動中
+                                    {isActing && (
+                                        <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-white bg-accent-strong px-1 rounded-full shadow">
+                                            ⚡
+                                        </span>
+                                    )}
+                                    <div className="text-xs font-semibold text-ink truncate max-w-full">
+                                        {master?.name}
+                                    </div>
+                                    <div className="relative">
+                                        <CharacterAvatar
+                                            masterId={char.masterId}
+                                            size="xl"
+                                            className={hp <= 0 ? "grayscale" : ""}
+                                        />
+                                        <div className="absolute -bottom-1 -right-1 flex flex-col gap-0.5 items-end">
+                                            <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-app/90 border border-line shadow-sm">
+                                                ⚔
+                                                <span
+                                                    className={
+                                                        atkAttr
+                                                            ? ATTR_COLOR[atkAttr]
+                                                            : "text-ink-subtle"
+                                                    }
+                                                >
+                                                    {atkAttr ? ATTR_LABEL[atkAttr] : "無"}
                                                 </span>
-                                            )}
+                                            </span>
+                                            <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-app/90 border border-line shadow-sm">
+                                                🛡
+                                                <span
+                                                    className={
+                                                        defAttr
+                                                            ? ATTR_COLOR[defAttr]
+                                                            : "text-ink-subtle"
+                                                    }
+                                                >
+                                                    {defAttr ? ATTR_LABEL[defAttr] : "無"}
+                                                </span>
+                                            </span>
                                         </div>
-                                        <span className="text-xs text-ink-muted shrink-0 ml-1">
+                                    </div>
+                                    <div className="relative w-full h-4 rounded bg-surface-2 overflow-hidden">
+                                        <div
+                                            className={`absolute inset-y-0 left-0 rounded transition-all ${hpPct > 50 ? "bg-green-500" : hpPct > 25 ? "bg-accent" : "bg-red-500"}`}
+                                            style={{ width: `${hpPct}%` }}
+                                        />
+                                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-ink [text-shadow:0_0_2px_rgb(255_255_255)]">
                                             {hp}/{maxHp}
                                         </span>
                                     </div>
-                                    <div className="w-full h-1.5 bg-surface-2 rounded mb-1">
-                                        <div
-                                            className={`h-full rounded transition-all ${hpPct > 50 ? "bg-green-500" : hpPct > 25 ? "bg-accent" : "bg-red-500"}`}
-                                            style={{ width: `${hpPct}%` }}
-                                        />
-                                    </div>
-                                    {(weaponName || armorName) && (
-                                        <div className="text-xs text-ink-subtle mb-1 truncate">
-                                            {weaponName && `⚔ ${weaponName}`}
-                                            {weaponName && armorName ? "　" : ""}
-                                            {armorName && `🛡 ${armorName}`}
-                                        </div>
-                                    )}
                                     {buffs.length > 0 && (
-                                        <div className="flex gap-1 flex-wrap">
+                                        <div className="flex gap-0.5 flex-wrap justify-center">
                                             {buffs.map((b, i) => (
                                                 <span
                                                     key={i}
-                                                    className="text-xs bg-blue-900 text-accent-strong px-1 rounded"
+                                                    className="text-[9px] bg-blue-900 text-accent-strong px-0.5 rounded"
                                                 >
-                                                    {b.type}+{b.percent}%({b.turnsRemaining}T)
+                                                    {buffShort[b.type] ?? b.type}
+                                                    {b.turnsRemaining}T
                                                 </span>
                                             ))}
                                         </div>
@@ -1209,18 +1284,6 @@ export default function DungeonBattlePage({ params }: { params: Promise<{ level:
                             );
                         })}
                     </div>
-                </div>
-
-                {/* Battle log */}
-                <div className="bg-app rounded-lg p-2 max-h-28 overflow-y-auto">
-                    {bs.log
-                        .slice(-10)
-                        .reverse()
-                        .map((line, i) => (
-                            <div key={i} className="text-xs text-ink-muted leading-5">
-                                {line}
-                            </div>
-                        ))}
                 </div>
             </div>
 
