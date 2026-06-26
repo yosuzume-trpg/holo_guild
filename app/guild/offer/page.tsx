@@ -222,7 +222,7 @@ export default function OfferPage() {
                                         className="mx-auto mb-1"
                                     />
                                 ) : (
-                                    <div className="w-2xl h-2xl rounded-full bg-surface-3 flex items-center justify-center text-sm font-bold text-ink-subtle mx-auto mb-1">
+                                    <div className="w-24 h-24 rounded-lg bg-surface-3 flex items-center justify-center text-sm font-bold text-ink-subtle mx-auto mb-1">
                                         ?
                                     </div>
                                 )}
@@ -361,7 +361,7 @@ export default function OfferPage() {
                         <div className="text-xs text-ink-muted mb-3">
                             キャラクターを1人選んでください（所持済みは証書×5）
                         </div>
-                        <div className="flex-1 overflow-y-auto grid grid-cols-4 gap-2">
+                        <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-4 gap-2">
                             {regionChars.map((char) => {
                                 const owned = ownedMasterIds.has(char.id);
                                 return (
