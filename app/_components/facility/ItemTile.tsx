@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import ItemIcon from '@/app/_components/facility/ItemIcon'
 
 export interface TileIngredient {
   name: string
@@ -9,8 +10,12 @@ export interface TileIngredient {
 interface Props {
   /** アイテム名 */
   name: string
+  /** アイコン画像のアイテムid（素材/レシピのid）。public/items/{icon}.webp を参照 */
+  icon?: string
   /** 価格(G, 経済倍率適用後) */
   price: number
+  /** 価格表示を上書きするラベル（例: "売却不可"）。指定時は {price}G の代わりに表示 */
+  priceLabel?: string
   /** このアイテムの在庫数 */
   stock: number
   /** 配置スロット由来の合計レート(個/分)。0なら未配置として控えめ表示。 */
@@ -34,7 +39,9 @@ interface Props {
  */
 export default function ItemTile({
   name,
+  icon,
   price,
+  priceLabel,
   stock,
   ratePerMin,
   onClick,
@@ -60,37 +67,44 @@ export default function ItemTile({
           style={{ width: `${progress * 100}%` }}
         />
       )}
-      <div className={`relative ${dim ? 'opacity-40' : ''}`}>
-        <div className="flex justify-between items-center gap-1">
-          <span className="text-xs font-semibold text-ink truncate">
-            {name}
-            {badge}
-          </span>
-          {progress != null && (
-            <span className="text-xs text-accent-strong shrink-0">{Math.floor(progress * 100)}%</span>
-          )}
-        </div>
-
-        {ingredients && (
-          <div className="text-xs mt-0.5">
-            {ingredients.map((ing) => (
-              <span
-                key={ing.name}
-                className={`mr-1 ${ing.have >= ing.qty ? 'text-ink-muted' : 'text-danger'}`}
-              >
-                {ing.name}×{ing.qty}({ing.have})
-              </span>
-            ))}
+      <div className={`relative flex gap-2 ${dim ? 'opacity-40' : ''}`}>
+        {icon && (
+          <div className="relative w-12 aspect-5/4 shrink-0 self-center">
+            <ItemIcon id={icon} alt={name} />
           </div>
         )}
+        <div className="min-w-0 flex-1">
+          <div className="flex justify-between items-center gap-1">
+            <span className="text-xs font-semibold text-ink truncate">
+              {name}
+              {badge}
+            </span>
+            {progress != null && (
+              <span className="text-xs text-accent-strong shrink-0">{Math.floor(progress * 100)}%</span>
+            )}
+          </div>
 
-        <div className="flex justify-between text-xs text-ink-muted mt-0.5">
-          <span>
-            {price}G ・ 在庫{stock}
-          </span>
-          <span className={ratePerMin > 0 ? 'text-success' : 'text-ink-subtle'}>
-            {ratePerMin > 0 ? `+${ratePerMin.toFixed(2)}/分` : '—'}
-          </span>
+          {ingredients && (
+            <div className="text-xs mt-0.5">
+              {ingredients.map((ing) => (
+                <span
+                  key={ing.name}
+                  className={`mr-1 ${ing.have >= ing.qty ? 'text-ink-muted' : 'text-danger'}`}
+                >
+                  {ing.name}×{ing.qty}({ing.have})
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-between text-xs text-ink-muted mt-0.5">
+            <span>
+              {priceLabel ?? `${price}G`} ・ 在庫{stock}
+            </span>
+            <span className={ratePerMin > 0 ? 'text-success' : 'text-ink-subtle'}>
+              {ratePerMin > 0 ? `+${ratePerMin.toFixed(2)}/分` : '—'}
+            </span>
+          </div>
         </div>
       </div>
     </Tag>

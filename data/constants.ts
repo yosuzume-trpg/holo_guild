@@ -143,6 +143,16 @@ export const AFFECTION_GAIN_RANGE = 11;
 /** 親愛レベルアップに必要なポイント数（= 親愛レベル × AFFECTION_POINTS_PER_LEVEL） */
 export const AFFECTION_POINTS_PER_LEVEL = 100;
 
+/** 交遊で入手する「魔力の源」の個数（MIN〜MAX のランダム） */
+export const SOCIALIZE_MAGICCORE_MIN = 1;
+export const SOCIALIZE_MAGICCORE_MAX = 3;
+
+/** マジックパフをプレゼントしたときに加算される親愛ポイント */
+export const PRESENT_AFFECTION_POINTS = 500;
+
+/** マジックパフの手動製作の所要時間（ミリ秒）。売却不可のため売値非依存で固定 */
+export const MAGICPUFF_CRAFT_MS = 60000;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 戦闘ステータスボーナス（キャラクターの★ランク）
 // ─────────────────────────────────────────────────────────────────────────────

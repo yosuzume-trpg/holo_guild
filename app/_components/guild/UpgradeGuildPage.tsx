@@ -9,6 +9,7 @@ import { useInventoryStore } from '@/store/inventoryStore'
 import { useCharacterStore } from '@/store/characterStore'
 import { getCharacterMaster } from '@/data/characters'
 import { EQUIP_UPGRADE_MAT_FACTOR, EQUIP_UPGRADE_GOLD_FACTOR } from '@/data/constants'
+import ItemIcon from '@/app/_components/facility/ItemIcon'
 
 interface Props {
   mode: 'blacksmith' | 'tailor'
@@ -153,7 +154,7 @@ export default function UpgradeGuildPage({ mode }: Props) {
       {entries.length === 0 ? (
         <p className="text-sm text-ink-subtle text-center py-6">装備がありません</p>
       ) : (
-        <div className="space-y-1">
+        <div className="grid grid-cols-2 gap-2">
           {entries.map((entry) => {
             const master = EQUIPMENT_MASTERS.find((m) => m.id === entry.masterId)
             const selectable = canSelect(entry)
@@ -164,7 +165,7 @@ export default function UpgradeGuildPage({ mode }: Props) {
                 type="button"
                 disabled={!selectable}
                 onClick={() => setSel(isSelected ? '' : entry.key)}
-                className={`w-full text-left rounded-lg px-3 py-2 border transition-colors ${
+                className={`flex items-center gap-2 h-20 text-left rounded-lg p-2 border transition-colors ${
                   !selectable
                     ? 'border-line bg-surface opacity-40 cursor-not-allowed'
                     : isSelected
@@ -172,21 +173,28 @@ export default function UpgradeGuildPage({ mode }: Props) {
                       : 'border-line bg-surface hover:border-accent-strong'
                 }`}
               >
-                <div className="text-sm text-ink">
-                  ★{entry.starRank} {master?.name}
-                  {entry.kind === 'group' && (
-                    <span className="ml-1 font-bold text-accent-strong">×{entry.count}</span>
-                  )}
-                  {entry.kind === 'equipped' && (
-                    <span className="ml-2 text-xs text-accent-strong">
-                      {entry.who.name}（★{entry.who.starRank}）装備中
+                <div className="relative w-12 aspect-5/4 shrink-0 self-center">
+                  <ItemIcon id={entry.masterId} alt={master?.name ?? ''} />
+                  {entry.kind === 'group' && entry.count > 1 && (
+                    <span className="absolute -top-1 -right-1 bg-accent-strong text-ink text-[10px] font-bold rounded-full px-1 leading-tight">
+                      ×{entry.count}
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-success">{master?.baseEffectLabel}</div>
-                {!selectable && (
-                  <div className="text-[10px] text-ink-subtle">重複なし（合成不可）</div>
-                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold text-ink truncate">
+                    ★{entry.starRank} {master?.name}
+                  </div>
+                  <div className="text-[10px] text-success truncate">{master?.baseEffectLabel}</div>
+                  {entry.kind === 'equipped' && (
+                    <div className="text-[10px] text-accent-strong truncate">
+                      {entry.who.name}（★{entry.who.starRank}）装備中
+                    </div>
+                  )}
+                  {!selectable && (
+                    <div className="text-[10px] text-ink-subtle">重複なし（合成不可）</div>
+                  )}
+                </div>
               </button>
             )
           })}

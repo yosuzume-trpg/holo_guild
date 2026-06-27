@@ -1,13 +1,19 @@
-import { MATERIAL_PRICE_MULTIPLIER } from "@/data/constants";
+import { MATERIAL_PRICE_MULTIPLIER, MAGICPUFF_CRAFT_MS } from "@/data/constants";
 import { getMaterial, computeBaseMaterialPrice } from "@/data/materials";
 
 export interface RecipeDef {
     id: string;
     name: string;
-    category: "food" | "processed" | "drink" | "medicine" | "craft";
+    category: "food" | "processed" | "drink" | "medicine" | "craft" | "special";
     ingredients: { materialId: string; qty: number }[];
     baseCost: number;
     sellPrice: number;
+    /** false なら商人ギルドで売却できない（既定は売却可） */
+    sellable?: boolean;
+    /** true なら手動製作のみ（キャラ配置による自動製作の対象外。既定は自動可） */
+    manualOnly?: boolean;
+    /** 手動製作の所要時間（ミリ秒）を上書きする。未指定なら売値依存の既定計算 */
+    manualCraftMs?: number;
 }
 
 // baseCost / sellPrice は材料費から自動算出するため RAW では持たない。
@@ -261,13 +267,29 @@ const RAW_RECIPES: RawRecipe[] = [
         category: "craft",
         ingredients: [{ materialId: "ancientgear", qty: 2 }],
     },
+    // 特別（プレゼント用）。手動製作のみ・売却不可。
+    {
+        id: "magicpuff",
+        name: "マジックパフ",
+        category: "special",
+        ingredients: [
+            { materialId: "magiccore", qty: 1 },
+            { materialId: "wheat", qty: 1 },
+            { materialId: "rainyjuice", qty: 1 },
+            { materialId: "magicmilk", qty: 1 },
+        ],
+        sellable: false,
+        manualOnly: true,
+        manualCraftMs: MAGICPUFF_CRAFT_MS,
+    },
 ];
 
 // レシピの基準原価 = 材料の基準価格（×MULTIPLIER 前）× 個数 の合計。素材価格改定に自動追従する。
 function recipeBaseCost(ingredients: RawRecipe["ingredients"]): number {
     return ingredients.reduce((sum, ing) => {
         const mat = getMaterial(ing.materialId);
-        const base = mat ? computeBaseMaterialPrice(mat.ratePerMin) : 0;
+        // ratePerMin が 0 以下の特殊素材（魔力の源など）は価格寄与なし・0除算回避
+        const base = mat && mat.ratePerMin > 0 ? computeBaseMaterialPrice(mat.ratePerMin) : 0;
         return sum + base * ing.qty;
     }, 0);
 }
@@ -288,6 +310,7 @@ export const CATEGORY_LABEL: Record<RecipeDef["category"], string> = {
     drink: "飲料",
     medicine: "薬品",
     craft: "工芸品",
+    special: "特別",
 };
 
 export function getRecipe(id: string): RecipeDef | undefined {

@@ -16,8 +16,11 @@ export interface MaterialDef {
    */
   expValue: number
   ratePerMin: number
-  facility: ProductionFacilityId | 'dungeon'
+  /** 'special' は生産施設・ダンジョンのどちらでも入手できない特殊素材（交遊報酬など） */
+  facility: ProductionFacilityId | 'dungeon' | 'special'
   dungeonMinLevel?: number
+  /** false なら商人ギルドで売却できない（既定は売却可） */
+  sellable?: boolean
 }
 
 /**
@@ -66,11 +69,20 @@ const RAW_MATERIALS: RawMaterial[] = [
   { id: 'ancientgear',   name: '古代歯車', expValue: 25, ratePerMin: 0.1,  facility: 'dungeon', dungeonMinLevel: 1 },
 ]
 
+// 生産施設でもダンジョンでも入手できない特殊素材（交遊で入手・売却不可）。
+// 価格導出（computeBaseMaterialPrice）は ratePerMin を使うため、ここでは別途定義して append する。
+const SPECIAL_MATERIALS: MaterialDef[] = [
+  { id: 'magiccore', name: '魔力の源', price: 0, expValue: 0, ratePerMin: 0, facility: 'special', sellable: false },
+]
+
 // 市場価格を希少度プライシングで導出し、経済倍率を適用（ratePerMin・expValue は不変）
-export const MATERIALS: MaterialDef[] = RAW_MATERIALS.map((m) => ({
-  ...m,
-  price: computeBaseMaterialPrice(m.ratePerMin) * MATERIAL_PRICE_MULTIPLIER,
-}))
+export const MATERIALS: MaterialDef[] = [
+  ...RAW_MATERIALS.map((m) => ({
+    ...m,
+    price: computeBaseMaterialPrice(m.ratePerMin) * MATERIAL_PRICE_MULTIPLIER,
+  })),
+  ...SPECIAL_MATERIALS,
+]
 
 export const MATERIALS_BY_FACILITY = {
   farm:    MATERIALS.filter((m) => m.facility === 'farm'),

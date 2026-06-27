@@ -15,16 +15,17 @@ import { useProductionFracStore } from "@/store/productionFracStore";
 import FacilityStatsBox from "@/app/_components/facility/FacilityStatsBox";
 import AssignedSlotList from "@/app/_components/facility/AssignedSlotList";
 import ItemTile from "@/app/_components/facility/ItemTile";
+import ItemPickerGrid from "@/app/_components/facility/ItemPickerGrid";
 import Modal from "@/app/_components/ui/Modal";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 
 const SELL_CANDIDATES = [
-    ...MATERIALS.filter((m) => m.facility !== "dungeon").map((m) => ({
+    ...MATERIALS.filter((m) => m.facility !== "dungeon" && m.sellable !== false).map((m) => ({
         id: m.id,
         name: m.name,
         price: m.price,
     })),
-    ...RECIPES.map((r) => ({
+    ...RECIPES.filter((r) => r.sellable !== false).map((r) => ({
         id: r.id,
         name: r.name,
         price: r.sellPrice,
@@ -189,9 +190,20 @@ export default function MerchantGuild() {
                     return {
                         level: `商人Lv.${char.merchantLevel}`,
                         itemName: item?.name ?? "",
+                        icon: item?.id,
                         rate: item ? `${rate.toFixed(2)}/分` : "",
                         minStock: item ? `最低${asgn.minStock}` : "",
                         stock: item ? `在庫${stock}` : "",
+                    };
+                }}
+                sortKeys={(char) => {
+                    const asgn = char.assignment as Extract<
+                        typeof char.assignment,
+                        { type: "merchant" }
+                    >;
+                    return {
+                        level: char.merchantLevel,
+                        material: SELL_CANDIDATES.findIndex((s) => s.id === asgn?.sellMaterialId),
                     };
                 }}
                 renderActions={(char) => (
@@ -219,6 +231,7 @@ export default function MerchantGuild() {
                             <ItemTile
                                 key={item.id}
                                 name={item.name}
+                                icon={item.id}
                                 price={item.price}
                                 stock={materials[item.id] ?? 0}
                                 ratePerMin={ratePerItem[item.id] ?? 0}
@@ -283,17 +296,17 @@ export default function MerchantGuild() {
                     </div>
                     <div>
                         <div className="text-xs text-ink-muted mb-1">販売する素材/商品</div>
-                        <select
-                            value={pickSellId}
-                            onChange={(e) => setPickSellId(e.target.value)}
-                            className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink"
-                        >
-                            {SELL_CANDIDATES.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                    {s.name} ({s.price}G)
-                                </option>
-                            ))}
-                        </select>
+                        <ItemPickerGrid
+                            items={SELL_CANDIDATES.map((s) => ({
+                                id: s.id,
+                                name: s.name,
+                                sub: `${s.price}G`,
+                            }))}
+                            selectedId={pickSellId}
+                            onSelect={setPickSellId}
+                            columns={3}
+                            scroll
+                        />
                     </div>
                     <div>
                         <div className="text-xs text-ink-muted mb-1">

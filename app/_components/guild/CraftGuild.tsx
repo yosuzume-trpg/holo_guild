@@ -19,6 +19,7 @@ import { useProductionFracStore } from "@/store/productionFracStore";
 import FacilityStatsBox from "@/app/_components/facility/FacilityStatsBox";
 import AssignedSlotList from "@/app/_components/facility/AssignedSlotList";
 import ItemTile from "@/app/_components/facility/ItemTile";
+import ItemPickerGrid from "@/app/_components/facility/ItemPickerGrid";
 import Modal from "@/app/_components/ui/Modal";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 
@@ -85,11 +86,10 @@ export default function CraftGuild() {
         for (const ing of recipe.ingredients) {
             if (!removeMaterial(ing.materialId, ing.qty)) return;
         }
-        // 完成品の売値（経済倍率適用済み）に比例。100Gにつき MANUAL_CRAFT_MS_PER_100G ミリ秒、最低 MANUAL_CRAFT_MIN_MS。
-        const duration = Math.max(
-            MANUAL_CRAFT_MIN_MS,
-            (recipe.sellPrice / 100) * MANUAL_CRAFT_MS_PER_100G,
-        );
+        // manualCraftMs があれば優先。無ければ完成品の売値に比例（100Gにつき MS、最低 MIN）。
+        const duration =
+            recipe.manualCraftMs ??
+            Math.max(MANUAL_CRAFT_MIN_MS, (recipe.sellPrice / 100) * MANUAL_CRAFT_MS_PER_100G);
         startCraftTask(recipeId, duration);
     }
 
@@ -186,8 +186,19 @@ export default function CraftGuild() {
                     return {
                         level: `工芸Lv.${char.craftLevel}`,
                         itemName: recipe?.name ?? "",
+                        icon: recipe?.id,
                         rate: recipe ? `${rate.toFixed(2)}/分` : "",
                         stock: recipe ? `在庫${materials[recipe.id] ?? 0}` : "",
+                    };
+                }}
+                sortKeys={(char) => {
+                    const asgn = char.assignment as Extract<
+                        typeof char.assignment,
+                        { type: "craft" }
+                    >;
+                    return {
+                        level: char.craftLevel,
+                        material: RECIPES.findIndex((r) => r.id === asgn?.recipeId),
                     };
                 }}
                 renderActions={(char) => (
@@ -219,7 +230,13 @@ export default function CraftGuild() {
                                         <ItemTile
                                             key={recipe.id}
                                             name={recipe.name}
+                                            icon={recipe.id}
                                             price={recipe.sellPrice}
+                                            priceLabel={
+                                                recipe.sellable === false
+                                                    ? "売却不可"
+                                                    : undefined
+                                            }
                                             stock={materials[recipe.id] ?? 0}
                                             ratePerMin={ratePerRecipe[recipe.id] ?? 0}
                                             onClick={() => startManualCraft(recipe.id)}
@@ -285,17 +302,17 @@ export default function CraftGuild() {
                     </div>
                     <div>
                         <div className="text-xs text-ink-muted mb-1">製作するレシピ</div>
-                        <select
-                            value={pickRecipeId}
-                            onChange={(e) => setPickRecipeId(e.target.value)}
-                            className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink"
-                        >
-                            {RECIPES.map((r) => (
-                                <option key={r.id} value={r.id}>
-                                    {r.name} ({r.sellPrice}G)
-                                </option>
-                            ))}
-                        </select>
+                        <ItemPickerGrid
+                            items={RECIPES.filter((r) => !r.manualOnly).map((r) => ({
+                                id: r.id,
+                                name: r.name,
+                                sub: `${r.sellPrice}G`,
+                            }))}
+                            selectedId={pickRecipeId}
+                            onSelect={setPickRecipeId}
+                            columns={3}
+                            scroll
+                        />
                     </div>
                     <div className="flex gap-2">
                         <button

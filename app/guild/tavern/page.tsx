@@ -6,6 +6,7 @@ import { generateDeliveryQuests, getDeliveryRotationIndex } from '@/data/tavern'
 import { useGameStore } from '@/store/gameStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useTavernStore } from '@/store/tavernStore'
+import ItemIcon from '@/app/_components/facility/ItemIcon'
 
 export default function TavernPage() {
   const cycleCount     = useGameStore((s) => s.cycleCount)
@@ -63,7 +64,10 @@ export default function TavernPage() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+                  <div className="relative w-12 aspect-5/4 shrink-0 self-center">
+                    <ItemIcon id={q.itemId} alt={q.name} />
+                  </div>
+                  <div className="min-w-0 flex-1">
                     <div className="text-sm font-bold text-ink truncate">{q.name}</div>
                     <div className="text-xs text-ink-muted">
                       必要 {q.qty}個 ・ 在庫 <span className={enough ? 'text-success' : 'text-danger'}>{stock}</span>

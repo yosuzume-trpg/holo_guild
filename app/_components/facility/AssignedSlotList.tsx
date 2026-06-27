@@ -1,7 +1,20 @@
+"use client";
+
+import { useState } from "react";
 import type { ReactNode } from "react";
 import type { CharacterInstance } from "@/types/game";
 import { getCharacterMaster } from "@/data/characters";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
+import ItemIcon from "@/app/_components/facility/ItemIcon";
+
+/** 配置スロットの並び替えモード */
+type SortMode = "default" | "level" | "material";
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+    { value: "default", label: "デフォルト" },
+    { value: "level", label: "レベル順" },
+    { value: "material", label: "素材順" },
+];
 
 /** 配置カードに表示する施設ごとの情報 */
 export interface SlotInfo {
@@ -9,6 +22,8 @@ export interface SlotInfo {
     level: ReactNode;
     /** 素材／レシピ／商品名 */
     itemName: ReactNode;
+    /** アイコン画像のアイテムid（素材/レシピのid）。public/items/{icon}.webp を参照 */
+    icon?: string;
     /** 1分あたりの個数（例: "1.05/分"） */
     rate: ReactNode;
     /** 最低保有数（商人のみ。未指定なら空セル） */
@@ -33,6 +48,11 @@ interface Props {
      * 未指定ならバー自体を描画しない。
      */
     slotProgress?: (char: CharacterInstance) => number | null;
+    /**
+     * 並び替え用のソートキー。level=表示レベル(降順), material=素材の正準順(昇順)。
+     * 指定するとソートUIを表示する。未指定なら並び替え不可（デフォルト順のまま）。
+     */
+    sortKeys?: (char: CharacterInstance) => { level: number; material: number };
 }
 
 /**
@@ -54,15 +74,49 @@ export default function AssignedSlotList({
     slotInfo,
     renderActions,
     slotProgress,
+    sortKeys,
 }: Props) {
     // カードは固定幅。横幅に応じて折り返す（伸縮しない）
     const cardClass = "w-[185px] rounded-lg p-2";
 
+    const [sortMode, setSortMode] = useState<SortMode>("default");
+
+    // 配置済み（非null）だけ並び替え、空きスロットは末尾に集める。
+    // デフォルトは元の順序（slots の並び）を維持。
+    const displaySlots: (CharacterInstance | null)[] = (() => {
+        if (!sortKeys || sortMode === "default") return slots;
+        const assigned = slots.filter((s): s is CharacterInstance => s !== null);
+        const emptyCount = slots.length - assigned.length;
+        const sorted = [...assigned].sort((a, b) => {
+            const ka = sortKeys(a);
+            const kb = sortKeys(b);
+            // レベル順は降順（高い順）、素材順は正準インデックスの昇順
+            return sortMode === "level" ? kb.level - ka.level : ka.material - kb.material;
+        });
+        return [...sorted, ...Array<null>(emptyCount).fill(null)];
+    })();
+
     return (
         <div>
-            <div className="text-sm text-ink-muted mb-2">配置スロット</div>
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-ink-muted">配置スロット</span>
+                {sortKeys && (
+                    <select
+                        value={sortMode}
+                        onChange={(e) => setSortMode(e.target.value as SortMode)}
+                        className="bg-app border border-line rounded px-2 py-1 text-xs text-ink"
+                        aria-label="配置スロットの並び替え"
+                    >
+                        {SORT_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                                {o.label}
+                            </option>
+                        ))}
+                    </select>
+                )}
+            </div>
             <div className="flex flex-wrap gap-1">
-                {slots.map((char, i) => {
+                {displaySlots.map((char, i) => {
                     if (!char) {
                         return (
                             <button
@@ -91,24 +145,19 @@ export default function AssignedSlotList({
                                 <div className="shrink-0 text-xs text-ink-muted">{info.level}</div>
                             </div>
 
-                            {/* アイコン | 素材アイコン（未実装・スペースのみ予約） */}
+                            {/* アイコン | 素材アイコン（5:4 を正方枠に contain で中央配置） */}
                             <div className="flex items-center justify-between gap-2">
                                 <CharacterAvatar masterId={char.masterId} size="xl" />
-                                <div
-                                    className="relative w-20 h-20 rounded-lg border border-dashed border-line shrink-0"
-                                    aria-hidden
-                                >
-                                    {info.itemName}
-                                    <span className="absolute bottom-1 right-1 text-sm shrink-0 text-success">
+                                <div className="relative w-20 h-20 rounded-lg border border-line bg-surface-2 overflow-hidden shrink-0">
+                                    {info.icon && <ItemIcon id={info.icon} />}
+                                    <span className="absolute bottom-0.5 right-0.5 text-xs text-success bg-surface/80 rounded px-1">
                                         {info.rate}
                                     </span>
                                 </div>
                             </div>
 
-                            {/* 素材名 | 1分あたりの個数 */}
-                            <div className="flex items-center justify-between gap-1 text-xs">
-                                <span className="min-w-0 truncate text-ink"></span>
-                            </div>
+                            {/* 素材名 */}
+                            <div className="text-xs text-ink truncate">{info.itemName}</div>
 
                             {/* 最低個数 | 在庫個数 */}
                             <div className="flex items-center justify-between gap-1 text-xs text-ink-subtle">

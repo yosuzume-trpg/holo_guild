@@ -20,6 +20,9 @@ import {
     AFFECTION_POINTS_PER_LEVEL,
     GR_BATTLE_LEVEL_CAP,
     GR_FACILITY_LEVEL_CAP,
+    SOCIALIZE_MAGICCORE_MIN,
+    SOCIALIZE_MAGICCORE_MAX,
+    PRESENT_AFFECTION_POINTS,
 } from "@/data/constants";
 
 const TENDENCIES: Tendency[] = ["standard", "attack", "magic", "defense", "speed"];
@@ -54,6 +57,7 @@ interface CharacterState {
     setAssignment: (id: string, assignment: CharacterAssignment | null) => void;
     equip: (id: string, slot: EquipmentSlot, equipInstanceId: string | null) => void;
     socialize: (id: string) => void;
+    presentGift: (id: string) => boolean;
     resetSocialFlag: () => void;
     gainBattleExp: (id: string, exp: number) => void;
     gainProductionExp: (
@@ -164,6 +168,35 @@ export const useCharacterStore = create<CharacterState>()(
                     }),
                 }));
                 useGameStore.getState().markSocialized();
+                // 交遊で特殊素材「魔力の源」を MIN〜MAX 個入手
+                const cores =
+                    SOCIALIZE_MAGICCORE_MIN +
+                    Math.floor(
+                        Math.random() *
+                            (SOCIALIZE_MAGICCORE_MAX - SOCIALIZE_MAGICCORE_MIN + 1),
+                    );
+                useInventoryStore.getState().addMaterial("magiccore", cores);
+            },
+
+            // マジックパフを1個消費して親愛ポイントを +PRESENT_AFFECTION_POINTS。
+            // 大きく加算するため複数レベルアップしうる（loop）。回数制限なし。成功で true。
+            presentGift: (id) => {
+                const char = get().characters.find((c) => c.id === id);
+                if (!char) return false;
+                if (!useInventoryStore.getState().removeMaterial("magicpuff", 1)) return false;
+                let points = char.affectionPoints + PRESENT_AFFECTION_POINTS;
+                let level = char.affectionLevel;
+                while (points >= level * AFFECTION_POINTS_PER_LEVEL) {
+                    points -= level * AFFECTION_POINTS_PER_LEVEL;
+                    level += 1;
+                }
+                set((s) => ({
+                    characters: updateChar(s.characters, id, {
+                        affectionPoints: points,
+                        affectionLevel: level,
+                    }),
+                }));
+                return true;
             },
 
             resetSocialFlag: () =>

@@ -19,6 +19,7 @@ import { useProductionFracStore } from "@/store/productionFracStore";
 import FacilityStatsBox from "@/app/_components/facility/FacilityStatsBox";
 import AssignedSlotList from "@/app/_components/facility/AssignedSlotList";
 import ItemTile from "@/app/_components/facility/ItemTile";
+import ItemPickerGrid from "@/app/_components/facility/ItemPickerGrid";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 import Modal from "@/app/_components/ui/Modal";
 
@@ -235,8 +236,17 @@ export default function ProductionFacilityPage({ facility }: Props) {
                     return {
                         level: `${SKILL_LABEL[facility]}.${char[SKILL_KEY_MAP[facility]]}`,
                         itemName: mat?.name ?? "",
+                        icon: mat?.id,
                         rate: mat ? `${rate.toFixed(2)}/分` : "",
                         stock: mat ? `在庫${inventoryMaterials[mat.id] ?? 0}` : "",
+                    };
+                }}
+                sortKeys={(char) => {
+                    const asgn = char.assignment;
+                    const matId = asgn?.type === facility ? asgn.materialId : "";
+                    return {
+                        level: char[SKILL_KEY_MAP[facility]],
+                        material: materials.findIndex((m) => m.id === matId),
                     };
                 }}
                 renderActions={(char) => {
@@ -287,6 +297,7 @@ export default function ProductionFacilityPage({ facility }: Props) {
                             <ItemTile
                                 key={mat.id}
                                 name={mat.name}
+                                icon={mat.id}
                                 price={mat.price}
                                 stock={inventoryMaterials[mat.id] ?? 0}
                                 ratePerMin={ratePerMaterial[mat.id] ?? 0}
@@ -316,19 +327,13 @@ export default function ProductionFacilityPage({ facility }: Props) {
                     {/* Material selection */}
                     <div className="mb-3">
                         <div className="text-xs text-ink-muted mb-1">生産する素材</div>
-                        <div className="grid grid-cols-2 gap-1">
-                            {materials.map((mat) => (
-                                <button
-                                    key={mat.id}
-                                    onClick={() => setSelectedMaterial(mat.id)}
-                                    className={`text-xs p-2 rounded border transition-colors ${
-                                        selectedMaterial === mat.id
-                                            ? "border-accent-strong text-accent-strong bg-surface-2"
-                                            : "border-line text-ink-muted hover:border-line-strong"
-                                    }`}
-                                >
-                                    {mat.name}
-                                    <span className="block text-ink-subtle">
+                        <ItemPickerGrid
+                            items={materials.map((mat) => ({
+                                id: mat.id,
+                                name: mat.name,
+                                highlight: (harvestBonuses[mat.id] ?? 0) > 0,
+                                sub: (
+                                    <>
                                         {mat.ratePerMin}/分
                                         {(harvestBonuses[mat.id] ?? 0) > 0 && (
                                             <span className="text-success">
@@ -336,10 +341,13 @@ export default function ProductionFacilityPage({ facility }: Props) {
                                                 🌾+{harvestBonuses[mat.id]}%
                                             </span>
                                         )}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
+                                    </>
+                                ),
+                            }))}
+                            selectedId={selectedMaterial}
+                            onSelect={setSelectedMaterial}
+                            columns={2}
+                        />
                     </div>
 
                     {/* Available characters (新規配置のみ) */}

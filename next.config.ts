@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
       // 立ち絵は ?v=N 付き。search を省略して任意のバージョンを許可する
       // （ASSET_VERSION を上げてもこの設定の変更は不要。対象は characters 配下のみ）。
       { pathname: '/holo_guild/characters/**' },
+      // 素材・レシピのアイコンも ?v=N 付きで参照するため許可する。
+      { pathname: '/holo_guild/items/**' },
     ],
   },
   // サーバー(nginx)が末尾スラッシュ付きで配信している。Next 既定では末尾スラッシュを

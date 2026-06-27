@@ -6,6 +6,7 @@ import type { EquipmentMaster } from '@/data/equipment'
 import { useGameStore } from '@/store/gameStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { TRADE_COST } from '@/data/constants'
+import ItemIcon from '@/app/_components/facility/ItemIcon'
 
 const ATTRIBUTE_LABEL: Record<string, string> = {
   fire: '火', water: '水', wind: '風', earth: '地',
@@ -101,6 +102,9 @@ export default function TradePage() {
       {result && result.length === 1 && (
         <div className="bg-surface border border-accent-strong rounded-xl p-4 text-center">
           <div className="text-xs text-accent-strong mb-1">入手！</div>
+          <div className="relative w-20 h-16 mx-auto mb-1">
+            <ItemIcon id={result[0].id} alt={result[0].name} />
+          </div>
           <div className="text-xl font-bold text-ink mb-1">
             {result[0].name}
             {result[0].attribute && (
@@ -114,14 +118,18 @@ export default function TradePage() {
       {result && result.length > 1 && (
         <div className="bg-surface border border-accent-strong rounded-xl p-4">
           <div className="text-xs text-accent-strong mb-2 text-center">{result.length}連 入手！</div>
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-2 gap-2">
             {result.map((item, i) => (
-              <div key={i} className="text-xs text-ink flex items-center gap-1">
-                <span className="text-ink-subtle">・</span>
-                {item.name}
-                {item.attribute && (
-                  <span className="text-xs text-orange-400">[{ATTRIBUTE_LABEL[item.attribute]}]</span>
-                )}
+              <div key={i} className="flex items-center gap-2 bg-surface-2 border border-line rounded p-1">
+                <div className="relative w-10 h-8 shrink-0">
+                  <ItemIcon id={item.id} alt={item.name} />
+                </div>
+                <span className="text-xs text-ink leading-tight">
+                  {item.name}
+                  {item.attribute && (
+                    <span className="text-xs text-orange-400 ml-0.5">[{ATTRIBUTE_LABEL[item.attribute]}]</span>
+                  )}
+                </span>
               </div>
             ))}
           </div>

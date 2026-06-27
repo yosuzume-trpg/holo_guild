@@ -13,6 +13,7 @@ import { useInventoryStore } from "@/store/inventoryStore";
 import { useProductionFracStore } from "@/store/productionFracStore";
 import AssignedSlotList from "@/app/_components/facility/AssignedSlotList";
 import ItemTile from "@/app/_components/facility/ItemTile";
+import ItemPickerGrid from "@/app/_components/facility/ItemPickerGrid";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 import {
     BATTLE_GOLD_BOSS_FACTOR,
@@ -229,10 +230,20 @@ export default function DungeonPage() {
                                         return {
                                             level: `DL${asgn.level}`,
                                             itemName: mat?.name ?? "",
+                                            icon: mat?.id,
                                             rate: mat ? `${rate.toFixed(2)}/分` : "",
                                             stock: mat
                                                 ? `在庫${inventoryMaterials[mat.id] ?? 0}`
                                                 : "",
+                                        };
+                                    }}
+                                    sortKeys={(char) => {
+                                        const asgn = char.assignment as DungeonAssignment;
+                                        return {
+                                            level: asgn.level,
+                                            material: availableMats.findIndex(
+                                                (m) => m.id === asgn.materialId,
+                                            ),
                                         };
                                     }}
                                     renderActions={(char) => (
@@ -252,6 +263,7 @@ export default function DungeonPage() {
                                             <ItemTile
                                                 key={mat.id}
                                                 name={mat.name}
+                                                icon={mat.id}
                                                 price={mat.price}
                                                 stock={inventoryMaterials[mat.id] ?? 0}
                                                 ratePerMin={ratePerMaterial[mat.id] ?? 0}
@@ -298,19 +310,18 @@ function DungeonAssignModal({
     const isEdit = !!editChar;
     const initialAsgn = editChar?.assignment as DungeonAssignment | undefined;
     const [charId, setCharId] = useState(editChar?.id ?? availableChars[0]?.id ?? "");
-    const [level, setLevel] = useState(initialAsgn?.level ?? maxCleared);
     const [matId, setMatId] = useState(initialAsgn?.materialId ?? "");
 
     // 配置できるのは「そのDL以上の戦闘レベル」のキャラのみ。
     // → あるキャラが周回できる最大DL = min(クリア済み最大DL, そのキャラの戦闘レベル)
+    // 低DLを選ぶ意味がない（高DLほど報酬率が高い）ため、常にこの最高率DLに固定する。
     const activeChar = editChar ?? availableChars.find((c) => c.id === charId);
     const activeMaster = activeChar ? getCharacterMaster(activeChar.masterId) : null;
     const battleLevel = activeChar?.battleLevel ?? 1;
     const maxAssignableDl = Math.max(1, Math.min(maxCleared, battleLevel));
-    const effectiveLevel = Math.min(Math.max(level, 1), maxAssignableDl);
 
-    // 収集できる素材は配置するDLのDL帯に従う
-    const levelMats = getDungeonMaterials(effectiveLevel);
+    // 収集できる素材は周回DLのDL帯に従う
+    const levelMats = getDungeonMaterials(maxAssignableDl);
     // 選択中の素材が現在のDL帯に無ければ先頭へ補正
     const effectiveMatId = levelMats.some((m) => m.id === matId)
         ? matId
@@ -326,7 +337,7 @@ function DungeonAssignModal({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="font-bold text-ink">
-                    {isEdit ? "DL・素材の変更" : "自動周回設定"}
+                    {isEdit ? "収集素材の変更" : "自動周回設定"}
                 </div>
                 <div>
                     <div className="text-xs text-ink-muted mb-1">キャラクター</div>
@@ -368,36 +379,27 @@ function DungeonAssignModal({
                     )}
                 </div>
                 <div>
-                    <div className="text-xs text-ink-muted mb-1">
-                        ダンジョンレベル（戦闘Lv.{battleLevel} まで配置可）
+                    <div className="text-xs text-ink-muted mb-1">周回DL</div>
+                    <div className="text-sm text-ink bg-app border border-line rounded px-2 py-1.5">
+                        DL {maxAssignableDl}
+                        <span className="text-ink-subtle">
+                            （戦闘Lv.{battleLevel} / 最大攻略DL {maxCleared} ・ +
+                            {Math.round((maxAssignableDl - 1) * PROD_DL_BONUS_PER_LEVEL * 100)}%）
+                        </span>
                     </div>
-                    <select
-                        value={effectiveLevel}
-                        onChange={(e) => setLevel(Number(e.target.value))}
-                        className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink"
-                    >
-                        {Array.from({ length: maxAssignableDl }, (_, i) => i + 1).map((lv) => (
-                            <option key={lv} value={lv}>
-                                DL {lv} (+
-                                {Math.round((lv - 1) * PROD_DL_BONUS_PER_LEVEL * 100)}
-                                %ボーナス)
-                            </option>
-                        ))}
-                    </select>
                 </div>
                 <div>
                     <div className="text-xs text-ink-muted mb-1">収集する素材</div>
-                    <select
-                        value={effectiveMatId}
-                        onChange={(e) => setMatId(e.target.value)}
-                        className="w-full bg-app border border-line rounded px-2 py-1.5 text-sm text-ink"
-                    >
-                        {levelMats.map((m) => (
-                            <option key={m.id} value={m.id}>
-                                {m.name} ({m.ratePerMin}/分)
-                            </option>
-                        ))}
-                    </select>
+                    <ItemPickerGrid
+                        items={levelMats.map((m) => ({
+                            id: m.id,
+                            name: m.name,
+                            sub: `${m.ratePerMin}/分`,
+                        }))}
+                        selectedId={effectiveMatId}
+                        onSelect={setMatId}
+                        columns={3}
+                    />
                 </div>
                 <div className="flex gap-2">
                     <button
@@ -409,7 +411,7 @@ function DungeonAssignModal({
                     <button
                         onClick={() => {
                             if (charId && effectiveMatId) {
-                                onAssign(charId, effectiveLevel, effectiveMatId);
+                                onAssign(charId, maxAssignableDl, effectiveMatId);
                             }
                         }}
                         disabled={!charId || !effectiveMatId}
