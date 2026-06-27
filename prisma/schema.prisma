@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model SaveSlot {
+  slot       Int      @id // 1..20（グローバル共有なので slot が主キー）
+  data       Json // localStorage の holo-guild-* 値の束 { key: value }
+  cycleCount Int
+  gold       Int
+  guildRank  Int
+  savedAt    DateTime
+}

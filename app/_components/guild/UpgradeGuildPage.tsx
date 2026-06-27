@@ -60,6 +60,9 @@ type Entry =
 const stepGold = (rank: number) => EQUIP_UPGRADE_GOLD_FACTOR * rank;
 const stepMat = (rank: number) => EQUIP_UPGRADE_MAT_FACTOR * rank;
 
+// 解体で得られる素材数。★1→1, ★2→2, ★3→4 …（1×2^(★-1)）。
+const dismantleYield = (rank: number) => 2 ** (rank - 1);
+
 type Plan = {
   // 消費する未装備ピースの「ランク → 個数」
   consumed: Record<number, number>;
@@ -156,6 +159,8 @@ export default function UpgradeGuildPage({ mode }: Props) {
   const equipment = useInventoryStore((s) => s.equipment);
   const materials = useInventoryStore((s) => s.materials);
   const removeMaterial = useInventoryStore((s) => s.removeMaterial);
+  const addMaterial = useInventoryStore((s) => s.addMaterial);
+  const removeEquipment = useInventoryStore((s) => s.removeEquipment);
   const mergeEquipmentTo = useInventoryStore((s) => s.mergeEquipmentTo);
   const characters = useCharacterStore((s) => s.characters);
 
@@ -274,6 +279,16 @@ export default function UpgradeGuildPage({ mode }: Props) {
     // 選択は維持。まだランクアップ可能なら続行でき、不可になれば自動的に閉じる。
   }
 
+  // 未装備の重複から1個を解体し、★ランクに応じた素材を取得する。
+  function handleDismantle() {
+    if (!selectedEntry || selectedEntry.kind !== "group" || !matId) return;
+    const pieceId = selectedEntry.instanceIds[0];
+    if (!pieceId) return;
+    removeEquipment(pieceId);
+    addMaterial(matId, dismantleYield(selectedEntry.starRank));
+    // 在庫が尽きてグループが消えたら、selectedEntry が null になりパネルは自動で閉じる。
+  }
+
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-ink">
@@ -316,13 +331,15 @@ export default function UpgradeGuildPage({ mode }: Props) {
               (m) => m.id === entry.masterId,
             );
             const info = analyze(entry);
-            const selectable = info.maxTarget > entry.starRank;
+            const canRank = info.maxTarget > entry.starRank;
+            // 未装備グループは解体できるので常に選択可。装備中はランクアップ可能時のみ。
+            const selectable = entry.kind === "group" || canRank;
             const isSelected = entry.key === sel;
             // 装備キャラ★で頭打ちか（重複は足りるが装備上限で不可）。
             const cappedByChar =
               entry.kind === "equipped" &&
               info.reachable > entry.starRank &&
-              !selectable;
+              !canRank;
             return (
               <button
                 key={entry.key}
@@ -357,17 +374,15 @@ export default function UpgradeGuildPage({ mode }: Props) {
                       {entry.who.name}（★{entry.who.starRank}）装備中
                     </div>
                   )}
-                  {selectable ? (
-                    <div className="text-[10px] text-ink-subtle">
-                      最大 ★{info.maxTarget} まで
-                    </div>
-                  ) : (
-                    <div className="text-[10px] text-ink-subtle">
-                      {cappedByChar
-                        ? "装備★上限に到達"
-                        : "重複なし（合成不可）"}
-                    </div>
-                  )}
+                  <div className="text-[10px] text-ink-subtle">
+                    {canRank
+                      ? `最大 ★${info.maxTarget} まで`
+                      : entry.kind === "group"
+                        ? "解体のみ可"
+                        : cappedByChar
+                          ? "装備★上限に到達"
+                          : "重複なし（合成不可）"}
+                  </div>
                 </div>
               </button>
             );
@@ -376,7 +391,7 @@ export default function UpgradeGuildPage({ mode }: Props) {
       )}
 
       {/* Action panel（下部固定バー） */}
-      {selectedEntry && a && plan && (
+      {selectedEntry && a && (
         <div className="sticky bottom-0 z-10 -mx-4 -mb-4 px-4 pt-3 pb-4 bg-app border-t border-line space-y-2">
           <button
             type="button"
@@ -391,77 +406,90 @@ export default function UpgradeGuildPage({ mode }: Props) {
             {
               EQUIPMENT_MASTERS.find((m) => m.id === selectedEntry.masterId)
                 ?.name
-            }{" "}
-            を一括ランクアップ
+            }
           </div>
 
-          {/* 目標★ステッパー */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-ink-muted">目標★</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setTargetRank(
-                    Math.max(a.survivorRank + 1, effectiveTarget - 1),
-                  )
-                }
-                disabled={effectiveTarget <= a.survivorRank + 1}
-                className="w-7 h-7 flex items-center justify-center rounded border border-line text-ink disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface-2"
-              >
-                −
-              </button>
-              <span className="text-base font-bold text-ink w-12 text-center">
-                ★{effectiveTarget}
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  setTargetRank(Math.min(a.maxTarget, effectiveTarget + 1))
-                }
-                disabled={effectiveTarget >= a.maxTarget}
-                className="w-7 h-7 flex items-center justify-center rounded border border-line text-ink disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface-2"
-              >
-                ＋
-              </button>
-            </div>
-            <span className="text-[11px] text-ink-subtle">
-              最大 ★{a.maxTarget}
-              {selectedEntry.kind === "equipped" && a.reachable > a.charCap && (
-                <>（装備★上限）</>
-              )}
-            </span>
-          </div>
+          {plan && (
+            <>
+              {/* 目標★ステッパー */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-ink-muted">目標★</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTargetRank(
+                        Math.max(a.survivorRank + 1, effectiveTarget - 1),
+                      )
+                    }
+                    disabled={effectiveTarget <= a.survivorRank + 1}
+                    className="w-7 h-7 flex items-center justify-center rounded border border-line text-ink disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface-2"
+                  >
+                    −
+                  </button>
+                  <span className="text-base font-bold text-ink w-12 text-center">
+                    ★{effectiveTarget}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTargetRank(Math.min(a.maxTarget, effectiveTarget + 1))
+                    }
+                    disabled={effectiveTarget >= a.maxTarget}
+                    className="w-7 h-7 flex items-center justify-center rounded border border-line text-ink disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface-2"
+                  >
+                    ＋
+                  </button>
+                </div>
+                <span className="text-[11px] text-ink-subtle">
+                  最大 ★{a.maxTarget}
+                  {selectedEntry.kind === "equipped" &&
+                    a.reachable > a.charCap && <>（装備★上限）</>}
+                </span>
+              </div>
 
-          <div className="text-xs text-ink-muted space-y-0.5">
-            <div>
-              消費:{" "}
-              {Object.entries(plan.consumed)
-                .sort(([r1], [r2]) => Number(r1) - Number(r2))
-                .map(([r, n]) => `★${r}×${n}`)
-                .join(" ") || "なし"}
-            </div>
-            <div>
-              必要素材: {getMaterial(matId ?? "")?.name} ×{" "}
-              <span className={matHave < plan.mat ? "text-danger" : ""}>
-                {plan.mat}
-              </span>
-              <span className="text-ink-subtle">（所持: {matHave}）</span>
-            </div>
-            <div>
-              費用:{" "}
-              <span className={gold < plan.gold ? "text-danger" : ""}>
-                {plan.gold.toLocaleString()}G
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={handleRankUp}
-            disabled={!canRankUp}
-            className="w-full bg-accent hover:bg-accent-strong disabled:opacity-40 disabled:cursor-not-allowed text-ink font-bold py-2 rounded-lg text-sm transition-colors"
-          >
-            ★{effectiveTarget} にランクアップ
-          </button>
+              <div className="text-xs text-ink-muted space-y-0.5">
+                <div>
+                  消費:{" "}
+                  {Object.entries(plan.consumed)
+                    .sort(([r1], [r2]) => Number(r1) - Number(r2))
+                    .map(([r, n]) => `★${r}×${n}`)
+                    .join(" ") || "なし"}
+                </div>
+                <div>
+                  必要素材: {getMaterial(matId ?? "")?.name} ×{" "}
+                  <span className={matHave < plan.mat ? "text-danger" : ""}>
+                    {plan.mat}
+                  </span>
+                  <span className="text-ink-subtle">（所持: {matHave}）</span>
+                </div>
+                <div>
+                  費用:{" "}
+                  <span className={gold < plan.gold ? "text-danger" : ""}>
+                    {plan.gold.toLocaleString()}G
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={handleRankUp}
+                disabled={!canRankUp}
+                className="w-full bg-accent hover:bg-accent-strong disabled:opacity-40 disabled:cursor-not-allowed text-ink font-bold py-2 rounded-lg text-sm transition-colors"
+              >
+                ★{effectiveTarget} にランクアップ
+              </button>
+            </>
+          )}
+
+          {/* 解体（未装備の重複から1個ずつ）。★に応じて素材を取得。 */}
+          {selectedEntry.kind === "group" && matId && (
+            <button
+              onClick={handleDismantle}
+              className="w-full bg-surface-2 hover:bg-surface-3 border border-line-strong text-ink font-bold py-2 rounded-lg text-sm transition-colors"
+            >
+              解体（1個）→ {getMaterial(matId)?.name} ×
+              {dismantleYield(selectedEntry.starRank)}
+            </button>
+          )}
         </div>
       )}
     </div>

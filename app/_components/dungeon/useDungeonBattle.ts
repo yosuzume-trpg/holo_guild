@@ -96,11 +96,15 @@ export function useDungeonBattle(dl: number) {
         return items;
     }
 
-    // ダンジョン終了時（クリア・全滅・撤退）に対象パーティのHPを全快させる
+    // ダンジョン終了時（クリア・全滅・撤退）に対象パーティのHPを全快させる。
+    // gainBattleExp 直後に呼ばれるため、レベルアップ後の最新ステータスをストアから読む
+    // （クロージャの characters は更新前で、古い最大HPに巻き戻ってしまうため）。
     function restorePartyHp(ids: string[]) {
+        const latest = useCharacterStore.getState().characters;
+        const equip = useInventoryStore.getState().equipment;
         for (const id of ids) {
-            const c = characters.find((x) => x.id === id);
-            if (c) updateCurrentHp(id, calcMaxHp(c, invEquipment));
+            const c = latest.find((x) => x.id === id);
+            if (c) updateCurrentHp(id, calcMaxHp(c, equip));
         }
     }
 

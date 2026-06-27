@@ -2,23 +2,11 @@
 
 import { useRef, useState } from 'react'
 import { useGameStore } from '@/store/gameStore'
-
-// 全ストアの永続化キーはこの接頭辞（holo-guild-game / -characters / -inventory /
-// -facilities / -dungeon / -manual-prod）。接頭辞で一括して入出力する。
-const SAVE_PREFIX = 'holo-guild-'
-
-function collectSaveKeys(): string[] {
-  const keys: string[] = []
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i)
-    if (k && k.startsWith(SAVE_PREFIX)) keys.push(k)
-  }
-  return keys
-}
+import CloudSaveModal from './CloudSaveModal'
+import { SAVE_PREFIX, collectLocalSave, restoreLocalSaveAndReload } from '@/lib/localSave'
 
 function exportSave() {
-  const data: Record<string, string> = {}
-  for (const k of collectSaveKeys()) data[k] = localStorage.getItem(k) ?? ''
+  const data = collectLocalSave()
   const payload = {
     app: 'holo-guild',
     exportedAt: new Date().toISOString(),
@@ -35,9 +23,15 @@ function exportSave() {
 
 export default function HeaderMenu() {
   const [open, setOpen] = useState(false)
+  const [cloudMode, setCloudMode] = useState<'save' | 'load' | 'delete' | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const safeMode = useGameStore((s) => s.safeMode)
   const toggleSafeMode = useGameStore((s) => s.toggleSafeMode)
+
+  function openCloud(mode: 'save' | 'load' | 'delete') {
+    setCloudMode(mode)
+    setOpen(false)
+  }
 
   function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -55,9 +49,8 @@ export default function HeaderMenu() {
         )
         if (entries.length === 0) throw new Error('no save keys')
         if (!confirm('現在のセーブデータを上書きしてインポートします。よろしいですか？')) return
-        for (const k of collectSaveKeys()) localStorage.removeItem(k)
-        for (const [k, v] of entries) localStorage.setItem(k, v as string)
-        location.reload()
+        // 復元→リロードの競合を避ける安全な復元（全ストア同期再ハイドレート後にreload）
+        restoreLocalSaveAndReload(Object.fromEntries(entries) as Record<string, string>)
       } catch {
         alert('インポートに失敗しました。ファイル形式を確認してください。')
       }
@@ -97,6 +90,24 @@ export default function HeaderMenu() {
               データをインポート
             </button>
             <button
+              onClick={() => openCloud('save')}
+              className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface-2 border-t border-line transition-colors"
+            >
+              クラウドセーブ
+            </button>
+            <button
+              onClick={() => openCloud('load')}
+              className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface-2 border-t border-line transition-colors"
+            >
+              クラウドロード
+            </button>
+            <button
+              onClick={() => openCloud('delete')}
+              className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface-2 border-t border-line transition-colors"
+            >
+              クラウド削除
+            </button>
+            <button
               onClick={() => toggleSafeMode()}
               className="w-full flex items-center justify-between px-3 py-2 text-sm text-ink hover:bg-surface-2 border-t border-line transition-colors"
             >
@@ -108,6 +119,8 @@ export default function HeaderMenu() {
           </div>
         </>
       )}
+
+      {cloudMode && <CloudSaveModal mode={cloudMode} onClose={() => setCloudMode(null)} />}
 
       <input
         ref={fileRef}
