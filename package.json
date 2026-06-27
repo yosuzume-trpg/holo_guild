@@ -7,12 +7,14 @@
     "build": "next build",
     "start": "next start -p 3004",
     "lint": "eslint",
-    "db:push": "dotenv -e .env.local -- prisma db push",
+    "db:push": "prisma db push",
+    "db:deploy": "prisma migrate deploy",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "dotenv": "^17.4.2",
     "next": "16.2.9",
     "pg": "^8.22.0",
     "react": "19.2.4",
