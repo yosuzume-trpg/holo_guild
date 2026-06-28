@@ -63,8 +63,8 @@ const RAW_MATERIALS: RawMaterial[] = [
   { id: 'saltwater',   name: '生成塩水',     expValue: 25, ratePerMin: 0.1,  facility: 'alchemy' },
 
   { id: 'magicstone',    name: '魔石',     expValue: 5,  ratePerMin: 0.5,  facility: 'dungeon', dungeonMinLevel: 1 },
-  { id: 'monstertooth',  name: '魔物の牙', expValue: 10, ratePerMin: 0.25, facility: 'dungeon', dungeonMinLevel: 1 },
-  { id: 'monsterhide',   name: '魔物の皮', expValue: 10, ratePerMin: 0.25, facility: 'dungeon', dungeonMinLevel: 1 },
+  { id: 'monstertooth',  name: '魔物の牙', expValue: 10, ratePerMin: 0.5,  facility: 'dungeon', dungeonMinLevel: 1 },
+  { id: 'monsterhide',   name: '魔物の皮', expValue: 10, ratePerMin: 0.5,  facility: 'dungeon', dungeonMinLevel: 1 },
   { id: 'magiccrystal',  name: '魔力結晶', expValue: 25, ratePerMin: 0.1,  facility: 'dungeon', dungeonMinLevel: 1 },
   { id: 'ancientgear',   name: '古代歯車', expValue: 25, ratePerMin: 0.1,  facility: 'dungeon', dungeonMinLevel: 1 },
 ]

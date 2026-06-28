@@ -317,7 +317,7 @@ export default function ProductionFacilityPage({ facility }: Props) {
 
             {/* Assignment / edit modal */}
             {modalOpen && (
-                <Modal onClose={closeModal} boxClassName="w-80 max-h-[80vh] flex flex-col">
+                <Modal onClose={closeModal} boxClassName="w-[92vw] max-w-xl max-h-[88vh] flex flex-col">
                     <div className="text-base font-bold text-ink mb-3">
                         {editing
                             ? `生産物の変更（${editMaster?.name ?? ""} ${SKILL_LABEL[facility]}.${editChar?.[SKILL_KEY_MAP[facility]]}）`
@@ -356,9 +356,9 @@ export default function ProductionFacilityPage({ facility }: Props) {
                             <div className="text-xs text-ink-muted mb-2">
                                 配置可能なキャラクター
                             </div>
-                            <div className="flex-1 overflow-y-auto space-y-2">
+                            <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {availableChars.length === 0 ? (
-                                    <p className="text-sm text-ink-subtle text-center py-4">
+                                    <p className="text-sm text-ink-subtle text-center py-4 sm:col-span-2">
                                         配置可能なキャラクターがいません
                                     </p>
                                 ) : (

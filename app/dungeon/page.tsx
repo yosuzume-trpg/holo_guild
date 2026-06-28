@@ -333,7 +333,7 @@ function DungeonAssignModal({
             onClick={onClose}
         >
             <div
-                className="bg-surface border border-line rounded-2xl p-4 w-80 space-y-3"
+                className="bg-surface border border-line rounded-2xl p-4 w-[92vw] max-w-xl max-h-[88vh] overflow-y-auto space-y-3"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="font-bold text-ink">
@@ -350,7 +350,7 @@ function DungeonAssignModal({
                             配置可能なキャラクターがいません
                         </p>
                     ) : (
-                        <div className="max-h-44 overflow-y-auto grid grid-cols-3 gap-2">
+                        <div className="max-h-[40vh] overflow-y-auto grid grid-cols-3 sm:grid-cols-4 gap-2">
                             {availableChars.map((c) => {
                                 const m = getCharacterMaster(c.masterId);
                                 const sel = charId === c.id;
