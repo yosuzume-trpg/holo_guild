@@ -17,7 +17,7 @@ import AssignedSlotList from "@/app/_components/facility/AssignedSlotList";
 import ItemTile from "@/app/_components/facility/ItemTile";
 import ItemPickerGrid from "@/app/_components/facility/ItemPickerGrid";
 import Modal from "@/app/_components/ui/Modal";
-import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
+import CharacterPicker from "@/app/_components/facility/CharacterPicker";
 
 const SELL_CANDIDATES = [
     ...MATERIALS.filter((m) => m.facility !== "dungeon" && m.sellable !== false).map((m) => ({
@@ -261,37 +261,14 @@ export default function MerchantGuild() {
                             <div className="text-sm text-ink px-2 py-1.5">
                                 {editMaster?.name ?? editCharId} (商人Lv.{editChar?.merchantLevel})
                             </div>
-                        ) : availableChars.length === 0 ? (
-                            <p className="text-sm text-ink-subtle text-center py-4">
-                                配置可能なキャラクターがいません
-                            </p>
                         ) : (
-                            <div className="max-h-[40vh] overflow-y-auto grid grid-cols-3 sm:grid-cols-4 gap-2">
-                                {availableChars.map((c) => {
-                                    const m = getCharacterMaster(c.masterId);
-                                    const sel = pickCharId === c.id;
-                                    return (
-                                        <button
-                                            key={c.id}
-                                            type="button"
-                                            onClick={() => setPickCharId(c.id)}
-                                            className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-colors ${
-                                                sel
-                                                    ? "border-accent-strong bg-surface-2"
-                                                    : "border-line hover:border-accent-strong"
-                                            }`}
-                                        >
-                                            <CharacterAvatar masterId={c.masterId} size="md" />
-                                            <div className="text-[10px] text-ink leading-tight text-center w-full truncate">
-                                                {m?.name ?? c.masterId}
-                                            </div>
-                                            <div className="text-[10px] text-ink-muted">
-                                                Lv.{c.merchantLevel}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                            <CharacterPicker
+                                chars={availableChars}
+                                selectedId={pickCharId}
+                                onSelect={setPickCharId}
+                                primaryKey="merchantLevel"
+                                className="max-h-[40vh] overflow-y-auto"
+                            />
                         )}
                     </div>
                     <div>
@@ -304,7 +281,6 @@ export default function MerchantGuild() {
                             }))}
                             selectedId={pickSellId}
                             onSelect={setPickSellId}
-                            columns={3}
                             scroll
                         />
                     </div>

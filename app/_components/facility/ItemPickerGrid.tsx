@@ -14,8 +14,6 @@ interface Props {
     items: ItemOption[];
     selectedId: string;
     onSelect: (id: string) => void;
-    /** 列数（既定3） */
-    columns?: 2 | 3;
     /** true で max-h を付けてスクロール可能にする（候補が多い工芸・商人向け） */
     scroll?: boolean;
 }
@@ -27,12 +25,11 @@ export default function ItemPickerGrid({
     items,
     selectedId,
     onSelect,
-    columns = 3,
     scroll = false,
 }: Props) {
     return (
         <div
-            className={`grid gap-2 ${columns === 2 ? "grid-cols-2" : "grid-cols-3"} ${
+            className={`grid gap-2 grid-cols-3 sm:grid-cols-5 ${
                 scroll ? "max-h-52 overflow-y-auto" : ""
             }`}
         >
