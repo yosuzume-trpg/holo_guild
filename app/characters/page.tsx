@@ -4,15 +4,14 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import CharacterPortrait from "@/app/_components/ui/CharacterPortrait";
 import EquipModal from "@/app/_components/ui/EquipModal";
+import EquipSlot from "@/app/_components/ui/EquipSlot";
 import CutinPopup from "@/app/_components/ui/CutinPopup";
 import AffectionBadge from "@/app/_components/ui/AffectionBadge";
 import RankBadge from "@/app/_components/ui/RankBadge";
-import ItemIcon from "@/app/_components/facility/ItemIcon";
 import { useCharacterStore } from "@/store/characterStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useGameStore } from "@/store/gameStore";
 import { getCharacterMaster } from "@/data/characters";
-import { getEquipment } from "@/data/equipment";
 import { STAR_GOLD_COST_FACTOR } from "@/data/constants";
 import { calcCharacterStats } from "@/utils/characterStats";
 import ProgressBar from "@/app/_components/ui/ProgressBar";
@@ -236,41 +235,6 @@ function Level({
 }
 
 // 装備スロット1枠。装備アイコンの上に★ランク・装備名を小さく重ねて表示。クリックで変更。
-function EquipSlot({
-    instanceId,
-    invEquipment,
-    onClick,
-}: {
-    instanceId: string | null;
-    invEquipment: EquipmentInstance[];
-    onClick: () => void;
-}) {
-    const inst = instanceId ? invEquipment.find((e) => e.instanceId === instanceId) : null;
-    const master = inst ? getEquipment(inst.masterId) : null;
-    return (
-        <button
-            onClick={onClick}
-            className="relative aspect-5/4 rounded overflow-hidden bg-surface-2 hover:bg-surface-3 border border-line transition-colors"
-        >
-            {inst && master ? (
-                <>
-                    <ItemIcon id={inst.masterId} alt={master.name} />
-                    <div className="absolute inset-x-0 bottom-0 bg-black/55 px-0.5 leading-tight truncate text-[10px] text-white">
-                        {master.name}
-                    </div>
-                    <div className="absolute py-0.5 px-1 top-0 left-0 text-[9px] text-white bg-black/55 ">
-                        <span className="font-bold">★{inst.starRank}</span>
-                    </div>
-                </>
-            ) : (
-                <span className="absolute inset-0 flex items-center justify-center text-[10px] text-ink-subtle">
-                    未装備
-                </span>
-            )}
-        </button>
-    );
-}
-
 function CharacterCard({
     char,
     characters,
@@ -462,7 +426,7 @@ function CharacterCard({
                         })}
                         <div className="flex items-center gap-1">
                             <span className="text-[10px] text-ink-muted">道具</span>
-                            <div className="w-1/3">
+                            <div className="w-1/4">
                                 <EquipSlot
                                     instanceId={char.equipment.tool}
                                     invEquipment={invEquipment}

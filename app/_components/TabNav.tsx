@@ -11,31 +11,31 @@ const MAIN_TABS = [
     {
         label: "ホーム",
         href: "/",
-        icon: "home.png",
+        icon: "home.webp",
         match: (p: string) => p === "/",
     },
     {
         label: "キャラ",
         href: "/characters",
-        icon: "character.png",
+        icon: "character.webp",
         match: (p: string) => p.startsWith("/characters") || p.startsWith("/roster"),
     },
     {
         label: "ギルド",
         href: "/guild/offer",
-        icon: "guild.png",
+        icon: "guild.webp",
         match: (p: string) => p.startsWith("/guild"),
     },
     {
         label: "生産",
         href: "/production/farm",
-        icon: "production.png",
+        icon: "production.webp",
         match: (p: string) => p.startsWith("/production"),
     },
     {
         label: "ダンジョン",
         href: "/dungeon",
-        icon: "dungeon.png",
+        icon: "dungeon.webp",
         match: (p: string) => p.startsWith("/dungeon"),
     },
 ];

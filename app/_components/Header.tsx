@@ -31,7 +31,7 @@ export default function Header() {
                 <span className="justify-self-start min-w-0 font-bold text-gold">{gold.toLocaleString()}G</span>
                 <span className="justify-self-center relative inline-flex items-center justify-center w-30 h-17">
                     <Image
-                        src="/holo_guild/guildRank.png"
+                        src="/holo_guild/guildRank.webp"
                         alt="ギルドランク"
                         width={120}
                         height={68}

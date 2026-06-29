@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { REGIONS, getRegionCharacters } from "@/data/characters";
+import { REGIONS, getRegionCharacters, maxUnlockedRegions } from "@/data/characters";
 import type { CharacterMaster, RegionId, Tendency } from "@/types/game";
 import { useGameStore } from "@/store/gameStore";
 import { useCharacterStore } from "@/store/characterStore";
 import { useDungeonStore } from "@/store/dungeonStore";
-import { GUARANTEE_THRESHOLD, RECRUIT_COST } from "@/data/constants";
+import { GUARANTEE_THRESHOLD, RECRUIT_COST, PICKUP_RATE } from "@/data/constants";
+import { getDeliveryRotationIndex } from "@/data/tavern";
+import { getPickup } from "@/data/pickup";
 import ProgressBar from "@/app/_components/ui/ProgressBar";
 import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 
@@ -31,11 +33,13 @@ interface PullResult {
     isNew: boolean;
     tendency: Tendency;
     certCount: number;
+    isPickup?: boolean;
 }
 
 export default function OfferPage() {
     const unlockedRegions = useGameStore((s) => s.unlockedRegions);
     const guildRank = useGameStore((s) => s.guildRank);
+    const cycleCount = useGameStore((s) => s.cycleCount);
     const unlockRegion = useGameStore((s) => s.unlockRegion);
     const spendGold = useGameStore((s) => s.spendGold);
     const characters = useCharacterStore((s) => s.characters);
@@ -50,11 +54,15 @@ export default function OfferPage() {
     );
     const [pullResults, setPullResults] = useState<PullResult[] | null>(null);
     const [showGuarantee, setShowGuarantee] = useState(false);
+    const [pickupMode, setPickupMode] = useState(false);
 
     const PULL10_COUNT = 10;
 
     const lockableRegions = REGIONS.filter((r) => !unlockedRegions.includes(r.id));
-    const pendingUnlockCount = Math.max(0, guildRank - unlockedRegions.length);
+    const pendingUnlockCount = Math.max(
+        0,
+        maxUnlockedRegions(guildRank) - unlockedRegions.length,
+    );
     const hasPendingUnlock = pendingUnlockCount > 0 && lockableRegions.length > 0;
 
     const recruitCost = RECRUIT_COST;
@@ -63,11 +71,19 @@ export default function OfferPage() {
     const points = recruitPoints[activeRegion] ?? 0;
     const canGuarantee = points >= GUARANTEE_THRESHOLD;
 
+    // ピックアップ対象：3サイクルごとに切り替わり、ローテーション内では固定
+    const rotationIndex = getDeliveryRotationIndex(cycleCount);
+    const pickupChar = getPickup(regionChars, rotationIndex, activeRegion);
+
     // 1回分の抽選。owned は連続抽選中の所持状況を引き継ぐため呼び出し側から受け取り更新する
     function pullOnce(owned: Set<string>): PullResult {
         addRecruitPoints(activeRegion, 1);
 
-        const picked = regionChars[Math.floor(Math.random() * regionChars.length)];
+        // ピックアップモードでは最初に PICKUP_RATE で判定し、当たればピックアップ対象を確定
+        const isPickup = pickupMode && Math.random() < PICKUP_RATE;
+        const picked = isPickup
+            ? pickupChar
+            : regionChars[Math.floor(Math.random() * regionChars.length)];
         const isNew = !owned.has(picked.id);
 
         if (isNew) {
@@ -79,10 +95,11 @@ export default function OfferPage() {
                 isNew: true,
                 tendency: newChar?.tendency ?? "standard",
                 certCount: 0,
+                isPickup,
             };
         }
         addCertificate(picked.id, 1);
-        return { char: picked, isNew: false, tendency: "standard", certCount: 1 };
+        return { char: picked, isNew: false, tendency: "standard", certCount: 1, isPickup };
     }
 
     function handlePull() {
@@ -181,6 +198,48 @@ export default function OfferPage() {
                     </button>
                 )}
 
+                {/* Gacha mode toggle */}
+                <div className="flex gap-1 mb-3">
+                    <button
+                        onClick={() => setPickupMode(false)}
+                        className={`flex-1 text-xs py-2 rounded border transition-colors ${
+                            !pickupMode
+                                ? "border-accent-strong text-accent-strong bg-surface"
+                                : "border-line text-ink-muted hover:border-line-strong"
+                        }`}
+                    >
+                        通常募集
+                    </button>
+                    <button
+                        onClick={() => setPickupMode(true)}
+                        className={`flex-1 text-xs py-2 rounded border transition-colors ${
+                            pickupMode
+                                ? "border-accent-strong text-accent-strong bg-surface"
+                                : "border-line text-ink-muted hover:border-line-strong"
+                        }`}
+                    >
+                        ピックアップ募集
+                    </button>
+                </div>
+
+                {/* Pickup target banner */}
+                {pickupMode && (
+                    <div className="flex items-center gap-3 bg-surface-2 border border-accent-strong rounded-xl p-3 mb-4">
+                        <CharacterAvatar masterId={pickupChar.id} size="2xl" />
+                        <div className="flex-1">
+                            <div className="text-xs text-accent-strong font-semibold">
+                                ⭐ ピックアップ対象
+                            </div>
+                            <div className="text-sm font-bold text-ink leading-tight">
+                                {pickupChar.name}
+                            </div>
+                            <div className="text-xs text-ink-muted">
+                                各抽選 {Math.round(PICKUP_RATE * 100)}% で確定入手
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Pull buttons */}
                 <div className="flex gap-2 mb-6">
                     <button
@@ -258,6 +317,11 @@ export default function OfferPage() {
                         <div className="text-xs text-ink-muted mb-1">
                             {pullResults[0].isNew ? "新しいメンバーが加わった！" : "証書を入手！"}
                         </div>
+                        {pullResults[0].isPickup && (
+                            <div className="text-xs text-accent-strong font-semibold">
+                                ⭐ ピックアップ
+                            </div>
+                        )}
                         <CharacterAvatar
                             masterId={pullResults[0].char.id}
                             size="2xl"
@@ -310,11 +374,18 @@ export default function OfferPage() {
                                 <div
                                     key={i}
                                     className={`relative rounded-lg p-2 text-center border ${
-                                        r.isNew
-                                            ? "bg-surface-2 border-accent-strong"
-                                            : "bg-surface-2 border-line-strong"
+                                        r.isPickup
+                                            ? "bg-surface-2 border-accent-strong ring-1 ring-accent-strong"
+                                            : r.isNew
+                                              ? "bg-surface-2 border-accent-strong"
+                                              : "bg-surface-2 border-line-strong"
                                     }`}
                                 >
+                                    {r.isPickup && (
+                                        <div className="absolute top-0.5 left-0.5 text-[10px] text-accent-strong">
+                                            ⭐
+                                        </div>
+                                    )}
                                     <CharacterAvatar
                                         masterId={r.char.id}
                                         size="2xl"

@@ -5,7 +5,9 @@ import { WEAPON_POOL, ARMOR_POOL, ACC_TOOL_POOL } from '@/data/equipment'
 import type { EquipmentMaster } from '@/data/equipment'
 import { useGameStore } from '@/store/gameStore'
 import { useInventoryStore } from '@/store/inventoryStore'
-import { TRADE_COST } from '@/data/constants'
+import { TRADE_COST, PICKUP_RATE } from '@/data/constants'
+import { getDeliveryRotationIndex } from '@/data/tavern'
+import { getPickup } from '@/data/pickup'
 import ItemIcon from '@/app/_components/facility/ItemIcon'
 
 const ATTRIBUTE_LABEL: Record<string, string> = {
@@ -23,20 +25,29 @@ type PoolKey = typeof POOLS[number]['key']
 export default function TradePage() {
   const gold        = useGameStore((s) => s.gold)
   const spendGold   = useGameStore((s) => s.spendGold)
+  const cycleCount  = useGameStore((s) => s.cycleCount)
   const addEquipment = useInventoryStore((s) => s.addEquipment)
 
   const [activePool, setActivePool] = useState<PoolKey>('weapon')
   const [result, setResult] = useState<EquipmentMaster[] | null>(null)
+  const [pickupMode, setPickupMode] = useState(false)
 
   const pool = POOLS.find((p) => p.key === activePool)!.pool
   const TRADE_COST_10 = TRADE_COST * 10
+
+  // ピックアップ対象：3サイクルごとに切り替わり、ローテーション内では固定
+  const rotationIndex = getDeliveryRotationIndex(cycleCount)
+  const pickup = getPickup(pool, rotationIndex, activePool)
 
   function handlePull(count: number) {
     const cost = TRADE_COST * count
     if (!spendGold(cost)) return
     const picked: EquipmentMaster[] = []
     for (let i = 0; i < count; i++) {
-      const item = pool[Math.floor(Math.random() * pool.length)]
+      // ピックアップモードでは最初に PICKUP_RATE で判定し、当たればピックアップ対象を確定
+      const item = pickupMode && Math.random() < PICKUP_RATE
+        ? pickup
+        : pool[Math.floor(Math.random() * pool.length)]
       addEquipment(item.id)
       picked.push(item)
     }
@@ -63,6 +74,49 @@ export default function TradePage() {
           </button>
         ))}
       </div>
+
+      {/* Gacha mode toggle */}
+      <div className="flex gap-1 mb-3">
+        <button
+          onClick={() => { setPickupMode(false); setResult(null) }}
+          className={`flex-1 text-xs py-2 rounded border transition-colors ${
+            !pickupMode
+              ? 'border-accent-strong text-accent-strong bg-surface'
+              : 'border-line text-ink-muted hover:border-line-strong'
+          }`}
+        >
+          通常ガチャ
+        </button>
+        <button
+          onClick={() => { setPickupMode(true); setResult(null) }}
+          className={`flex-1 text-xs py-2 rounded border transition-colors ${
+            pickupMode
+              ? 'border-accent-strong text-accent-strong bg-surface'
+              : 'border-line text-ink-muted hover:border-line-strong'
+          }`}
+        >
+          ピックアップガチャ
+        </button>
+      </div>
+
+      {/* Pickup target banner */}
+      {pickupMode && (
+        <div className="flex items-center gap-3 bg-surface-2 border border-accent-strong rounded-xl p-3 mb-4">
+          <div className="relative w-14 h-11 shrink-0">
+            <ItemIcon id={pickup.id} alt={pickup.name} />
+          </div>
+          <div className="flex-1">
+            <div className="text-xs text-accent-strong font-semibold">⭐ ピックアップ対象</div>
+            <div className="text-sm font-bold text-ink leading-tight">
+              {pickup.name}
+              {pickup.attribute && (
+                <span className="text-xs text-orange-400 ml-1">[{ATTRIBUTE_LABEL[pickup.attribute]}]</span>
+              )}
+            </div>
+            <div className="text-xs text-ink-muted">各抽選 {Math.round(PICKUP_RATE * 100)}% で確定入手</div>
+          </div>
+        </div>
+      )}
 
       {/* Pool contents */}
       <div className="bg-surface border border-line rounded-lg p-3 mb-4">

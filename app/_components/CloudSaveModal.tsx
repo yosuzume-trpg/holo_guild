@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Modal from '@/app/_components/ui/Modal'
-import { collectLocalSave, restoreLocalSaveAndReload, readSaveMeta } from '@/lib/localSave'
+import { captureLocalSave, restoreLocalSaveAndReload, readSaveMeta } from '@/lib/localSave'
 
 // basePath(/holo_guild) は fetch に自動付与されないため絶対パスで指定する。
 const API = '/holo_guild/api/saves'
@@ -53,7 +53,7 @@ export default function CloudSaveModal({ mode, onClose }: { mode: Mode; onClose:
       const res = await fetch(`${API}/${slot}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: collectLocalSave(), ...readSaveMeta() }),
+        body: JSON.stringify({ data: captureLocalSave(), ...readSaveMeta() }),
       })
       if (!res.ok) throw new Error()
       await refresh()

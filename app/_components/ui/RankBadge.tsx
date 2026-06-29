@@ -8,12 +8,12 @@ interface Props {
   className?: string
 }
 
-/** ランク画像(public/rank.png)を背景に★ランクの数値を重ねて表示するバッジ。 */
+/** ランク画像(public/rank.webp)を背景に★ランクの数値を重ねて表示するバッジ。 */
 export default function RankBadge({ rank, className = 'w-6 h-6 text-xs' }: Props) {
   return (
     <span
       className={`inline-flex items-center justify-center bg-contain bg-center bg-no-repeat font-bold text-ink leading-none ${className}`}
-      style={{ backgroundImage: `url(${BASE_PATH}/rank.png)` }}
+      style={{ backgroundImage: `url(${BASE_PATH}/rank.webp)` }}
     >
       {rank}
     </span>

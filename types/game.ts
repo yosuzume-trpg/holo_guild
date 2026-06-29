@@ -1,8 +1,10 @@
-export type RegionId = 'region1' | 'region2' | 'region3' | 'region4' | 'region5'
+export type RegionId = 'region1' | 'region2' | 'region3' | 'region4' | 'region5' | 'region6'
 export type Tendency = 'standard' | 'attack' | 'magic' | 'defense' | 'speed'
 export type ProductionFacilityId = 'farm' | 'mining' | 'fishing' | 'alchemy'
 export type GuildFacilityId = 'merchant' | 'craft'
 export type Attribute = 'fire' | 'water' | 'wind' | 'earth' | null
+/** ダンジョンの属性モード。火/風/地/水＝その属性、none＝無属性、all＝全属性混在 */
+export type DungeonAttrMode = 'fire' | 'wind' | 'earth' | 'water' | 'none' | 'all'
 export type EnemyType = 'standard' | 'attack' | 'magic' | 'defense' | 'elite' | 'boss'
 export type EquipmentSlot = 'weapon' | 'armor' | 'accessory' | 'tool'
 

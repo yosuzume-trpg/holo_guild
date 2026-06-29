@@ -12,6 +12,8 @@ import { useFacilityStore } from "@/store/facilityStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useProductionFracStore } from "@/store/productionFracStore";
 import AssignedSlotList from "@/app/_components/facility/AssignedSlotList";
+import { dungeonAttrMode } from "@/utils/dungeonBattle";
+import { DUNGEON_MODE_LABEL, DUNGEON_MODE_COLOR } from "@/app/_components/dungeon/labels";
 import ItemTile from "@/app/_components/facility/ItemTile";
 import ItemPickerGrid from "@/app/_components/facility/ItemPickerGrid";
 import CharacterPicker from "@/app/_components/facility/CharacterPicker";
@@ -136,6 +138,7 @@ export default function DungeonPage() {
                         <div className="flex flex-wrap gap-2 justify-center">
                             {challengeLevels.reverse().map((lv) => {
                                 const cleared = clearedLevels.includes(lv);
+                                const mode = dungeonAttrMode(lv);
                                 return (
                                     <Link
                                         key={lv}
@@ -145,6 +148,9 @@ export default function DungeonPage() {
                                         <div>
                                             <div className="font-semibold text-ink">
                                                 ダンジョン Lv.{lv}
+                                                <span className={`ml-1.5 text-sm ${DUNGEON_MODE_COLOR[mode]}`}>
+                                                    [{DUNGEON_MODE_LABEL[mode]}]
+                                                </span>
                                             </div>
                                             <div className="text-xs text-ink-muted mt-0.5">
                                                 敵Lv: ~{lv * 10} ／ ボス撃破:{" "}

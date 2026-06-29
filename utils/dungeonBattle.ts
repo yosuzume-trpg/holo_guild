@@ -5,13 +5,15 @@ import type {
     Buff,
     StageType,
     Attribute,
+    DungeonAttrMode,
 } from "@/types/game";
 import { getEquipment } from "@/data/equipment";
 import { calcCharacterStats } from "@/utils/characterStats";
 import {
     ATTR_ADVANTAGE,
     DUNGEON_ATTR,
-    ENEMY_NEUTRAL_CHANCE,
+    DUNGEON_ATTR_CYCLE,
+    ENEMY_OFF_ATTR_CHANCE,
     BOSS_SECOND_ACTION_SPD_FACTOR,
     BOSS_EXTRA_ENEMY_DL_THRESHOLD,
     BOSS_EXTRA_ENEMY_COUNT,
@@ -75,8 +77,42 @@ export function multStr(mult: number): string {
     return mult > 1 ? "【有利！】" : mult < 1 ? "【不利】" : "";
 }
 
-export function dungeonAttr(dl: number): Attribute {
-    return DUNGEON_ATTR[(dl - 1) % 4];
+/** ダンジョンの属性モード（火→風→地→水→無→全 を DL mod 6 でループ）。 */
+export function dungeonAttrMode(dl: number): DungeonAttrMode {
+    return DUNGEON_ATTR_CYCLE[(dl - 1) % DUNGEON_ATTR_CYCLE.length];
+}
+
+// 火/風/地/水/無 の全候補（通常敵・全ダンジョンの抽選用）
+const ALL_ATTRS: Attribute[] = ["fire", "wind", "earth", "water", null];
+function pickRandom<T>(arr: T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * 通常敵（随伴含む）の属性を決める。
+ * - all: 火/風/地/水/無からランダム
+ * - none: 基本は無属性、稀に元素へ逸脱
+ * - 元素: 基本はその属性、稀に別属性（他元素・無）へ逸脱
+ */
+export function rollEnemyAttr(mode: DungeonAttrMode): Attribute {
+    if (mode === "all") return pickRandom(ALL_ATTRS);
+    const base: Attribute = mode === "none" ? null : mode;
+    if (Math.random() < ENEMY_OFF_ATTR_CHANCE) {
+        return pickRandom(ALL_ATTRS.filter((a) => a !== base));
+    }
+    return base;
+}
+
+/**
+ * ボス・強敵の属性（逸脱なし、基準属性を確実に持つ）。
+ * - all: 火/風/地/水からランダム（無にはならない）
+ * - none: 無属性
+ * - 元素: その属性
+ */
+export function bossAttr(mode: DungeonAttrMode): Attribute {
+    if (mode === "all") return pickRandom(DUNGEON_ATTR);
+    if (mode === "none") return null;
+    return mode;
 }
 
 export function randomEnemyType(): EnemyTypeKey {
@@ -93,26 +129,26 @@ export function makeEnemy(type: EnemyTypeKey, dl: number, attr: Attribute): Enem
 }
 
 export function makeEnemies(stageType: StageType, dl: number): EnemyInstance[] {
-    const attr = dungeonAttr(dl);
+    const mode = dungeonAttrMode(dl);
     if (stageType === "boss") {
-        const boss = makeEnemy("boss", dl, attr);
+        const boss = makeEnemy("boss", dl, bossAttr(mode));
         if (dl < BOSS_EXTRA_ENEMY_DL_THRESHOLD) return [boss];
         // DL11以上は随伴の通常敵を追加（通常敵の生成ルールに従う）
         const adds = Array.from({ length: BOSS_EXTRA_ENEMY_COUNT }, () =>
-            makeEnemy(randomEnemyType(), dl, Math.random() < ENEMY_NEUTRAL_CHANCE ? null : attr),
+            makeEnemy(randomEnemyType(), dl, rollEnemyAttr(mode)),
         );
         return [boss, ...adds];
     }
-    if (stageType === "elite") return [makeEnemy("elite", dl, attr)];
+    if (stageType === "elite") return [makeEnemy("elite", dl, bossAttr(mode))];
     const count =
         dl <= ENEMY_COUNT_DL_THRESHOLD
             ? ENEMY_COUNT_LOW_MIN +
               Math.floor(Math.random() * (ENEMY_COUNT_LOW_MAX - ENEMY_COUNT_LOW_MIN + 1))
             : ENEMY_COUNT_HIGH_MIN +
               Math.floor(Math.random() * (ENEMY_COUNT_HIGH_MAX - ENEMY_COUNT_HIGH_MIN + 1));
-    // 通常敵はDL属性を持つが、一部は無属性のまま
+    // 通常敵は基準属性を中心に、稀に別属性へ逸脱
     return Array.from({ length: count }, () =>
-        makeEnemy(randomEnemyType(), dl, Math.random() < ENEMY_NEUTRAL_CHANCE ? null : attr),
+        makeEnemy(randomEnemyType(), dl, rollEnemyAttr(mode)),
     );
 }
 

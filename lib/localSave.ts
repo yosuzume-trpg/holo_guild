@@ -13,9 +13,12 @@ import { useTavernStore } from '@/store/tavernStore'
 // -facilities / -dungeon / -manual-prod / -prod-frac / -tavern）。接頭辞で一括して扱う。
 export const SAVE_PREFIX = 'holo-guild-'
 
-// 永続化される全ストア。ロード/インポート後の再ハイドレートに使う。
+// 永続化される全ストア。ロード/インポート後の再ハイドレートやセーブ前のフラッシュに使う。
 // 新しい永続ストアを追加したらここにも追加すること。
-const PERSISTED_STORES: { persist: { rehydrate: () => unknown } }[] = [
+const PERSISTED_STORES: {
+  persist: { rehydrate: () => unknown }
+  setState: (partial: Record<string, never>) => void
+}[] = [
   useGameStore, useCharacterStore, useInventoryStore, useFacilityStore,
   useDungeonStore, useManualProductionStore, useProductionFracStore, useTavernStore,
 ]
@@ -28,6 +31,19 @@ export function collectLocalSave(): Record<string, string> {
     if (k && k.startsWith(SAVE_PREFIX)) data[k] = localStorage.getItem(k) ?? ''
   }
   return data
+}
+
+/**
+ * セーブ/エクスポート用にデータを収集する。
+ *
+ * 収集前に各ストアへ空更新（setState({})）を流して「いま表示しているこのタブの状態」を
+ * localStorage に確実に書き出す。これにより、別タブが古い状態を書き戻して localStorage が
+ * 食い違っていても（例: 旧タブのティックで characters が巻き戻る）、クラウドセーブが
+ * 空/古いキャラデータを保存してしまうのを防ぐ。
+ */
+export function captureLocalSave(): Record<string, string> {
+  for (const s of PERSISTED_STORES) s.setState({})
+  return collectLocalSave()
 }
 
 /** 既存の holo-guild-* を消してから data を書き戻す（リロードは呼び出し側で行う） */

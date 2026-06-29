@@ -5,7 +5,7 @@
  * ゲームバランスの調整はここを変更してください。
  */
 
-import type { Tendency, CharacterStats, Attribute } from "@/types/game";
+import type { Tendency, CharacterStats, Attribute, DungeonAttrMode } from "@/types/game";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // サイクル・オフライン
@@ -266,6 +266,17 @@ export const DELIVERY_QTY_MAX = 30;
 export const TRADE_COST = 500;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ピックアップガチャ（募集・貿易共通）
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * ピックアップガチャの当選確率。1回引くごとにこの確率で先に判定し、
+ * 当たればピックアップ対象を入手、外れれば通常抽選を行う。
+ * ピックアップ対象は酒場と同じ3サイクル周期で切り替わる。
+ */
+export const PICKUP_RATE = 0.15;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ダンジョン全般
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -278,11 +289,21 @@ export const DUNGEON_MAX_PARTY_SIZE = 5;
 /** アイテム種別ごとの持ち込み上限数 */
 export const DUNGEON_ITEM_LIMIT = 5;
 
-/** ダンジョンレベルごとの属性順（DL mod 4 でインデックスを決定） */
+/** 4元素リスト（ランダム抽選などで再利用） */
 export const DUNGEON_ATTR: Attribute[] = ["fire", "wind", "earth", "water"];
 
-/** 通常敵が無属性のままになる確率（残りはDL属性が付与される） */
-export const ENEMY_NEUTRAL_CHANCE = 0.25;
+/** ダンジョン属性モードのサイクル（DL mod 6 でインデックスを決定）。火→風→地→水→無→全 */
+export const DUNGEON_ATTR_CYCLE: DungeonAttrMode[] = [
+    "fire",
+    "wind",
+    "earth",
+    "water",
+    "none",
+    "all",
+];
+
+/** 敵が基準属性から外れて別属性になる確率（どのダンジョンでも稀に別属性が混じる） */
+export const ENEMY_OFF_ATTR_CHANCE = 0.25;
 
 /** ボスの2回目行動が発生する素早さ倍率（本来の素早さ×この値の位置でも行動） */
 export const BOSS_SECOND_ACTION_SPD_FACTOR = 0.9;

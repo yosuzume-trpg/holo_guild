@@ -5,7 +5,7 @@ import { useGameStore } from '@/store/gameStore'
 import { useInventoryStore } from '@/store/inventoryStore'
 import { useDungeonStore } from '@/store/dungeonStore'
 import { getMaterial } from '@/data/materials'
-import { REGIONS } from '@/data/characters'
+import { REGIONS, maxUnlockedRegions } from '@/data/characters'
 import { GR_UPGRADE_MAT_COST, GR_BATTLE_LEVEL_CAP, GR_FACILITY_LEVEL_CAP } from '@/data/constants'
 
 export default function GuildUpgradePage() {
@@ -32,6 +32,10 @@ export default function GuildUpgradePage() {
 
   const nextGr = guildRank + 1
   const lockableRegions = REGIONS.filter((r) => !unlockedRegions.includes(r.id))
+  // 今のGR(昇格後)で解放枠が残っているか。地域は最初以外GR2ごとに解放。
+  const canPickRegion = maxUnlockedRegions(guildRank) - unlockedRegions.length > 0
+  // 次のランクアップで解放枠が増えるか（プレビュー用）
+  const nextGrUnlocksRegion = maxUnlockedRegions(nextGr) > maxUnlockedRegions(guildRank)
 
   function handleUpgrade() {
     if (upgradeGuildRank()) setUpgraded(true)
@@ -54,7 +58,7 @@ export default function GuildUpgradePage() {
           <div className="text-sm font-semibold text-accent-strong">
             🏆 GR{guildRank} に上昇しました！
           </div>
-          {lockableRegions.length > 0 && !regionPicked ? (
+          {canPickRegion && lockableRegions.length > 0 && !regionPicked ? (
             <>
               <div className="text-xs text-accent-strong">解放する地域を1つ選んでください</div>
               <div className="grid grid-cols-2 gap-2">
@@ -69,7 +73,11 @@ export default function GuildUpgradePage() {
             </>
           ) : (
             <div className="text-xs text-accent-strong">
-              {regionPicked ? '地域を解放しました。' : 'すべての地域が解放済みです。'}
+              {regionPicked
+                ? '地域を解放しました。'
+                : lockableRegions.length === 0
+                ? 'すべての地域が解放済みです。'
+                : '今回のランクアップでは地域解放はありません（地域は偶数GRごとに解放）。'}
             </div>
           )}
         </div>
@@ -124,7 +132,7 @@ export default function GuildUpgradePage() {
           <div className="text-ink font-semibold mb-2">GR{nextGr} 解放効果</div>
           <div>・施設拡張・研究の上限: {nextGr * GR_FACILITY_LEVEL_CAP} に上昇</div>
           <div>・戦闘レベルの上限: {nextGr * GR_BATTLE_LEVEL_CAP} に上昇</div>
-          <div>・新しい地域の解放選択</div>
+          {nextGrUnlocksRegion && <div>・新しい地域の解放選択</div>}
         </div>
       )}
     </div>

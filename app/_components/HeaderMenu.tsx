@@ -3,10 +3,10 @@
 import { useRef, useState } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import CloudSaveModal from './CloudSaveModal'
-import { SAVE_PREFIX, collectLocalSave, restoreLocalSaveAndReload } from '@/lib/localSave'
+import { SAVE_PREFIX, captureLocalSave, restoreLocalSaveAndReload } from '@/lib/localSave'
 
 function exportSave() {
-  const data = collectLocalSave()
+  const data = captureLocalSave()
   const payload = {
     app: 'holo-guild',
     exportedAt: new Date().toISOString(),

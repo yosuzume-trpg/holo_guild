@@ -1,4 +1,4 @@
-import type { StageType } from "@/types/game";
+import type { StageType, DungeonAttrMode } from "@/types/game";
 import type { EnemyTypeKey } from "@/utils/dungeonBattle";
 
 // ─── 属性 ───────────────────────────────────────────────────────────────────
@@ -13,6 +13,24 @@ export const ATTR_COLOR: Record<string, string> = {
     wind: "text-success",
     earth: "text-yellow-600",
     water: "text-accent-strong",
+};
+
+// ─── ダンジョン属性モード（一覧表示用。火/風/地/水＋無/全） ────────────────────
+export const DUNGEON_MODE_LABEL: Record<DungeonAttrMode, string> = {
+    fire: "火",
+    wind: "風",
+    earth: "地",
+    water: "水",
+    none: "無",
+    all: "全",
+};
+export const DUNGEON_MODE_COLOR: Record<DungeonAttrMode, string> = {
+    fire: "text-danger",
+    wind: "text-success",
+    earth: "text-yellow-600",
+    water: "text-accent-strong",
+    none: "text-ink-subtle",
+    all: "text-affection",
 };
 
 // ─── 敵タイプ ────────────────────────────────────────────────────────────────

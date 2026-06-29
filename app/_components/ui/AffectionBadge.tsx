@@ -8,12 +8,12 @@ interface Props {
   className?: string
 }
 
-/** ハート画像(public/heart.png)を背景に親愛度の数値を重ねて表示するバッジ。 */
+/** ハート画像(public/heart.webp)を背景に親愛度の数値を重ねて表示するバッジ。 */
 export default function AffectionBadge({ level, className = 'w-10 h-10 text-xl' }: Props) {
   return (
     <span
       className={`inline-flex items-center justify-center bg-contain bg-center bg-no-repeat font-extrabold text-white leading-none ${className}`}
-      style={{ backgroundImage: `url(${BASE_PATH}/heart.png)` }}
+      style={{ backgroundImage: `url(${BASE_PATH}/heart.webp)` }}
     >
       {level}
     </span>

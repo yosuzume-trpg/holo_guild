@@ -37,6 +37,14 @@ export default function EquipModal({ char, slot, characters, equipment, equip, o
     return m?.slot === slot
   })
 
+  // 表示順の優先度: 装備中(自分) → 装備可能(フリー・ランクOK) → ランク超過 → 他キャラ装備中。
+  const sortPriority = (e: EquipmentInstance): number => {
+    if (char.equipment[slot] === e.instanceId) return 0
+    if (equippedByOthers.has(e.instanceId)) return 3
+    return e.starRank > char.starRank ? 2 : 1
+  }
+  const sortedItems = [...slotItems].sort((a, b) => sortPriority(a) - sortPriority(b))
+
   // 誰も装備していない（フリーな）装備を「同名＋同★ランク」でまとめる
   const freeKey = (e: EquipmentInstance) => `${e.masterId}__${e.starRank}`
   const freeGroups = new Map<string, EquipmentInstance[]>()
@@ -75,7 +83,7 @@ export default function EquipModal({ char, slot, characters, equipment, equip, o
         {slotItems.length === 0 ? (
           <p className="text-sm text-ink-subtle text-center py-2">所持装備なし</p>
         ) : (
-          slotItems.map((e) => {
+          sortedItems.map((e) => {
             const m = getEquipment(e.masterId)
             const isEquipped  = char.equipment[slot] === e.instanceId
             const usedByOther = equippedByOthers.has(e.instanceId)

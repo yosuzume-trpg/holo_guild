@@ -57,6 +57,8 @@ export function useDungeonBattle(dl: number) {
     const characters = useCharacterStore((s) => s.characters);
     const gainBattleExp = useCharacterStore((s) => s.gainBattleExp);
     const updateCurrentHp = useCharacterStore((s) => s.updateCurrentHp);
+    const setAssignment = useCharacterStore((s) => s.setAssignment);
+    const equip = useCharacterStore((s) => s.equip);
     const clearDungeon = useDungeonStore((s) => s.clearDungeon);
     const addRecruitPoints = useDungeonStore((s) => s.addRecruitPoints);
     const maxCleared = useDungeonStore((s) => s.maxClearedLevel);
@@ -627,6 +629,8 @@ export function useDungeonBattle(dl: number) {
         getEquipName,
         effectiveStats,
         toggleParty,
+        setAssignment,
+        equip,
         startDungeon,
         handleClear,
         handleAttack,
