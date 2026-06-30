@@ -1,124 +1,135 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useCharacterStore } from "@/store/characterStore";
 import { useGameStore } from "@/store/gameStore";
-import { useInventoryStore } from "@/store/inventoryStore";
-import { getCharacterMaster } from "@/data/characters";
-import { getMaterial } from "@/data/materials";
 import CharacterPortrait from "@/app/_components/ui/CharacterPortrait";
+import type { CharacterInstance } from "@/types/game";
+
+// basePath(/holo_guild)配下のため画像 URL には basePath を含める
+const BASE_PATH = "/holo_guild";
+const ICON_BASE = `${BASE_PATH}/buttons`;
+
+// 右上に縦並びで表示するクイックナビ
+const QUICK_NAV = [
+    { label: "キャラ募集", href: "/guild/offer", icon: "offer.webp" },
+    { label: "生産管理", href: "/production/farm", icon: "production.webp" },
+    { label: "ダンジョン", href: "/dungeon", icon: "dungeon.webp" },
+    { label: "キャラ一覧", href: "/characters", icon: "character.webp" },
+];
+
+// ホームに最大何名まで表示するか（実際の表示数は画面幅で変動）
+const MAX_HOME = 3;
+
+/**
+ * 親愛度を重みにした非復元抽選で最大 n 名を選ぶ。
+ * 親愛度が高いキャラほど選ばれやすい。
+ */
+function pickWeighted(chars: CharacterInstance[], n: number): string[] {
+    const pool = [...chars];
+    const result: string[] = [];
+    while (pool.length > 0 && result.length < n) {
+        const total = pool.reduce((s, c) => s + c.affectionLevel, 0);
+        let r = Math.random() * total;
+        let idx = 0;
+        for (; idx < pool.length - 1; idx++) {
+            r -= pool[idx].affectionLevel;
+            if (r <= 0) break;
+        }
+        result.push(pool[idx].id);
+        pool.splice(idx, 1);
+    }
+    return result;
+}
 
 export default function HomePage() {
     const characters = useCharacterStore((s) => s.characters);
     const socialize = useCharacterStore((s) => s.socialize);
-    const cycleCount = useGameStore((s) => s.cycleCount);
-    const guildRank = useGameStore((s) => s.guildRank);
     const socializedThisCycle = useGameStore((s) => s.socializedThisCycle);
-    const harvestBonuses = useGameStore((s) => s.harvestBonuses);
-    const materials = useInventoryStore((s) => s.materials);
+    const cycleCount = useGameStore((s) => s.cycleCount);
 
-    // 今サイクルの豊作素材（+%）
-    const harvestEntries = Object.entries(harvestBonuses).filter(([, pct]) => pct > 0);
+    // 親愛度Lv.5以上がホーム表示の対象
+    const eligible = characters.filter((c) => c.affectionLevel >= 5);
+    const eligibleKey = eligible.map((c) => `${c.id}:${c.affectionLevel}`).join(",");
 
-    // Characters with affection >= 5 are shown on the home screen
-    const homeChars = characters.filter((c) => c.affectionLevel >= 5);
+    // 表示するキャラはサイクルごと（および対象の変化時）に抽選し直す
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    useEffect(() => {
+        setSelectedIds(pickWeighted(eligible, MAX_HOME));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [eligibleKey, cycleCount]);
 
-    const totalMaterialCount = Object.values(materials).reduce((s, v) => s + v, 0);
+    const selectedChars = selectedIds
+        .map((id) => eligible.find((c) => c.id === id))
+        .filter((c): c is CharacterInstance => Boolean(c));
 
     return (
-        <div className="p-4 space-y-4">
-            {/* Guild summary */}
-            <div className="bg-surface border border-line rounded-xl p-4">
-                <div className="text-xs text-ink-muted mb-1">ギルドランク</div>
-                <div className="text-2xl font-bold text-gold mb-2">GR {guildRank}</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="text-ink-muted">サイクル数</div>
-                    <div className="text-ink text-right">{cycleCount}</div>
-                    <div className="text-ink-muted">メンバー数</div>
-                    <div className="text-ink text-right">{characters.length}人</div>
-                    <div className="text-ink-muted">素材在庫</div>
-                    <div className="text-ink text-right">
-                        {totalMaterialCount.toLocaleString()}個
-                    </div>
-                </div>
-                {harvestEntries.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-line text-xs text-success flex items-start gap-1">
-                        <span>🌾</span>
-                        <span>
-                            今サイクルの豊作:{" "}
-                            {harvestEntries
-                                .map(([id, pct]) => `${getMaterial(id)?.name ?? id} +${pct}%`)
-                                .join(" / ")}
+        <div
+            className="relative min-h-full flex flex-col bg-cover bg-center bg-no-repeat p-4"
+            style={{ backgroundImage: `url(${BASE_PATH}/bg/home.webp)` }}
+        >
+            {/* Quick nav（右上・縦並びアイコン） */}
+            <div className="absolute top-4 right-4 flex flex-col gap-3 z-10">
+                {QUICK_NAV.map((nav) => (
+                    <Link
+                        key={nav.href}
+                        href={nav.href}
+                        className="flex flex-col items-center transition-transform hover:scale-105"
+                    >
+                        <Image
+                            src={`${ICON_BASE}/${nav.icon}`}
+                            alt={nav.label}
+                            width={56}
+                            height={56}
+                            className="w-14 h-14 object-contain drop-shadow"
+                        />
+                        <span className="text-xs font-bold text-white [-webkit-text-stroke:3px_#000] [paint-order:stroke_fill]">
+                            {nav.label}
                         </span>
-                    </div>
-                )}
+                    </Link>
+                ))}
             </div>
 
-            {/* Quick nav */}
-            <div className="grid grid-cols-2 gap-2">
-                <Link
-                    href="/guild/offer"
-                    className="bg-surface hover:bg-surface-2 border border-line hover:border-accent-strong rounded-lg p-3 text-center transition-colors"
-                >
-                    <div className="text-lg mb-0.5">🏹</div>
-                    <div className="text-sm font-semibold text-ink">キャラ募集</div>
-                </Link>
-                <Link
-                    href="/production/farm"
-                    className="bg-surface hover:bg-surface-2 border border-line hover:border-green-400 rounded-lg p-3 text-center transition-colors"
-                >
-                    <div className="text-lg mb-0.5">🌾</div>
-                    <div className="text-sm font-semibold text-ink">生産管理</div>
-                </Link>
-                <Link
-                    href="/dungeon"
-                    className="bg-surface hover:bg-surface-2 border border-line hover:border-red-400 rounded-lg p-3 text-center transition-colors"
-                >
-                    <div className="text-lg mb-0.5">⚔️</div>
-                    <div className="text-sm font-semibold text-ink">ダンジョン</div>
-                </Link>
-                <Link
-                    href="/characters"
-                    className="bg-surface hover:bg-surface-2 border border-line hover:border-purple-400 rounded-lg p-3 text-center transition-colors"
-                >
-                    <div className="text-lg mb-0.5">👥</div>
-                    <div className="text-sm font-semibold text-ink">キャラ一覧</div>
-                </Link>
-            </div>
+            {/* 上部の余白（キャラを下端に寄せる） */}
+            <div className="flex-1" />
 
-            {/* Home characters (affection >= 5) */}
-            {homeChars.length > 0 && (
-                <div>
-                    <div className="text-sm text-ink-muted mb-2">ホームにいるメンバー</div>
-                    <div className="flex gap-3 overflow-x-auto pb-2">
-                        {homeChars.map((char) => {
-                            const master = getCharacterMaster(char.masterId);
-                            return (
-                                <div key={char.id} className="shrink-0">
-                                    <div className="relative w-16 h-20 rounded-lg overflow-hidden bg-surface-3 mx-auto mb-1">
-                                        <CharacterPortrait masterId={char.masterId} />
-                                    </div>
-                                    <div className="text-xs text-ink text-center w-16 truncate">
-                                        {master?.name ?? char.masterId}
-                                    </div>
-                                    <div className="flex justify-center mt-1">
-                                        <button
-                                            onClick={() => socialize(char.id)}
-                                            disabled={socializedThisCycle}
-                                            className="text-xs px-2 py-0.5 rounded bg-pink-700 hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
-                                        >
-                                            {char.socializedThisCycle ? "済" : "交遊"}
-                                        </button>
-                                    </div>
+            {/* ホームにいるメンバー（親愛度重みでランダムに1〜3名を大きく表示） */}
+            {selectedChars.length > 0 && (
+                <div className="flex items-end justify-center gap-3">
+                    {selectedChars.map((char, i) => {
+                        // 表示数は画面幅で変動：小=1名 / sm=2名 / lg=3名
+                        const visClass =
+                            i === 0 ? "flex" : i === 1 ? "hidden sm:flex" : "hidden lg:flex";
+                        return (
+                            <div
+                                key={char.id}
+                                className={`${visClass} flex-col items-center min-w-0 flex-1 max-w-[60%] sm:max-w-[46%] lg:max-w-[32%]`}
+                            >
+                                {/* 交遊ボタンは画像の上側 */}
+                                <button
+                                    onClick={() => socialize(char.id)}
+                                    disabled={socializedThisCycle}
+                                    className="mb-1 text-sm px-3 py-1 rounded-full bg-pink-700 hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold shadow transition-colors"
+                                >
+                                    {char.socializedThisCycle ? "交遊済" : "交遊"}
+                                </button>
+                                <div className="relative w-full aspect-1/2">
+                                    <CharacterPortrait
+                                        masterId={char.masterId}
+                                        className="object-contain object-bottom"
+                                        sizes="(max-width:640px) 60vw, (max-width:1024px) 46vw, 32vw"
+                                    />
                                 </div>
-                            );
-                        })}
-                    </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
-            {homeChars.length === 0 && characters.length > 0 && (
-                <div className="text-sm text-ink-subtle text-center py-4 bg-surface rounded-lg border border-line">
+            {eligible.length === 0 && characters.length > 0 && (
+                <div className="text-sm text-white text-center py-4 [-webkit-text-stroke:3px_#000] [paint-order:stroke_fill] font-bold">
                     親愛度がLv.5以上になると
                     <br />
                     ホームに表示されます

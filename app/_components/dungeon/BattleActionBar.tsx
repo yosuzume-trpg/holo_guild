@@ -3,10 +3,13 @@
 import type { CharacterInstance, CharacterStats, EnemyInstance } from "@/types/game";
 import type { StoredBattle } from "@/store/dungeonStore";
 import { getCharacterMaster } from "@/data/characters";
+import CharacterAvatar from "@/app/_components/ui/CharacterAvatar";
 import { DUNGEON_ITEMS, getRecipe } from "@/data/recipes";
 import { DUNGEON_STAGE_COUNT } from "@/data/constants";
-import { ATTR_LABEL } from "@/app/_components/dungeon/labels";
+import { ATTR_LABEL, ATTR_COLOR } from "@/app/_components/dungeon/labels";
 import type { ActionMode } from "@/app/_components/dungeon/useDungeonBattle";
+import { getEquipment } from "@/data/equipment";
+import { useInventoryStore } from "@/store/inventoryStore";
 
 interface Props {
     bs: StoredBattle;
@@ -38,6 +41,7 @@ export default function BattleActionBar({
     onRetreat,
     onNextStage,
 }: Props) {
+    const invEquipment = useInventoryStore((s) => s.equipment);
     return (
         <div className="border-t border-line bg-surface p-3 shrink-0">
             {bs.battlePhase === "result" ? (
@@ -67,8 +71,25 @@ export default function BattleActionBar({
                 )
             ) : isPlayerTurn && actingChar ? (
                 <div>
-                    <div className="text-xs text-ink-muted mb-2">
-                        ⚡ {getCharacterMaster(actingChar.masterId)?.name} のターン
+                    <div className="flex items-center gap-1.5 text-xs text-ink-muted mb-2">
+                        <CharacterAvatar masterId={actingChar.masterId} size="xs" />
+                        {getCharacterMaster(actingChar.masterId)?.name} のターン
+                        {(() => {
+                            const weaponInst = invEquipment.find(
+                                (e) => e.instanceId === actingChar.equipment.weapon,
+                            );
+                            const weapon = weaponInst ? getEquipment(weaponInst.masterId) : null;
+                            if (!weapon) return null;
+                            return (
+                                <span className="ml-1">
+                                    {weapon.attribute && (
+                                        <span className={ATTR_COLOR[weapon.attribute]}>
+                                            [{ATTR_LABEL[weapon.attribute]}]
+                                        </span>
+                                    )}
+                                </span>
+                            );
+                        })()}
                     </div>
                     {action === "menu" && (
                         <div className="grid grid-cols-3 gap-2">
@@ -134,7 +155,9 @@ export default function BattleActionBar({
                                             }}
                                             className="bg-surface-2 hover:bg-surface-3 disabled:opacity-40 border border-line rounded p-2 text-left text-xs"
                                         >
-                                            <div className="text-ink font-medium">{recipe?.name}</div>
+                                            <div className="text-ink font-medium">
+                                                {recipe?.name}
+                                            </div>
                                             <div className="text-ink-muted">残り{qty}個</div>
                                         </button>
                                     );
@@ -159,7 +182,8 @@ export default function BattleActionBar({
                     {actingEnemy ? (
                         <>
                             🔴 {actingEnemy.type}
-                            {actingEnemy.attribute && `[${ATTR_LABEL[actingEnemy.attribute]}]`} の行動...
+                            {actingEnemy.attribute && `[${ATTR_LABEL[actingEnemy.attribute]}]`}{" "}
+                            の行動...
                         </>
                     ) : (
                         "敵のターン..."
