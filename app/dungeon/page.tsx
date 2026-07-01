@@ -36,6 +36,7 @@ export default function DungeonPage() {
     const setAssignment = useCharacterStore((s) => s.setAssignment);
     const maxCleared = useDungeonStore((s) => s.maxClearedLevel);
     const clearedLevels = useDungeonStore((s) => s.clearedLevels);
+    const activeBattle = useDungeonStore((s) => s.activeBattle);
     const inventoryMaterials = useInventoryStore((s) => s.materials);
     const dungeonFacility = useFacilityStore((s) => s.dungeon);
     const getSlotCount = useFacilityStore((s) => s.getSlotCount);
@@ -233,11 +234,18 @@ export default function DungeonPage() {
                                         const rate = mat
                                             ? getDungeonRate(mat, asgn.level, char.starRank)
                                             : 0;
+                                        // 手動攻略の参加者は攻略中のみ周回報酬が止まる
+                                        const inBattle =
+                                            activeBattle?.partyIds.includes(char.id) ?? false;
                                         return {
                                             level: `DL${asgn.level}`,
                                             itemName: mat?.name ?? "",
                                             icon: mat?.id,
-                                            rate: mat ? `${rate.toFixed(2)}/分` : "",
+                                            rate: inBattle
+                                                ? "⚔攻略中(一時停止)"
+                                                : mat
+                                                  ? `${rate.toFixed(2)}/分`
+                                                  : "",
                                             stock: mat
                                                 ? `在庫${inventoryMaterials[mat.id] ?? 0}`
                                                 : "",

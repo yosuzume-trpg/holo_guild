@@ -303,7 +303,7 @@ export const DUNGEON_ATTR_CYCLE: DungeonAttrMode[] = [
 ];
 
 /** 敵が基準属性から外れて別属性になる確率（どのダンジョンでも稀に別属性が混じる） */
-export const ENEMY_OFF_ATTR_CHANCE = 0.25;
+export const ENEMY_OFF_ATTR_CHANCE = 0.1;
 
 /** ボスの2回目行動が発生する素早さ倍率（本来の素早さ×この値の位置でも行動） */
 export const BOSS_SECOND_ACTION_SPD_FACTOR = 0.9;

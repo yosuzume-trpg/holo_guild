@@ -96,6 +96,8 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
     const { harvestBonuses } = useGameStore.getState()
     const { getResearchBonus } = useFacilityStore.getState()
     const frac = fracRef.current
+    // 手動攻略のアクティブバトル参加者は、周回配置を残したまま攻略中のため周回報酬を止める
+    const inBattle = new Set(useDungeonStore.getState().activeBattle?.partyIds ?? [])
 
     for (const char of characters) {
       const asgn = char.assignment
@@ -103,6 +105,7 @@ export default function GameShell({ children }: { children: React.ReactNode }) {
 
       // Dungeon auto-grind: DL bonus (+1%/level, DL1=+0%) + star bonus
       if (asgn.type === 'dungeon') {
+        if (inBattle.has(char.id)) continue // 攻略中は周回報酬を発生させない
         const mat = getMaterial(asgn.materialId)
         if (!mat) continue
         const rate = getDungeonRate(mat, asgn.level, char.starRank)

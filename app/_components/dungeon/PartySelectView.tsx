@@ -14,19 +14,52 @@ interface Props {
     battle: DungeonBattle;
 }
 
+type SortMode = "default" | "level" | "weapon" | "attack" | "magic";
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+    { value: "default", label: "デフォルト" },
+    { value: "level", label: "レベル順" },
+    { value: "weapon", label: "武器名順" },
+    { value: "attack", label: "攻撃力順" },
+    { value: "magic", label: "魔力順" },
+];
+
 /** パーティ選択画面（未配置＋自動周回中のキャラから1〜5人を選んで挑戦）。 */
 export default function PartySelectView({ battle }: Props) {
     const router = useRouter();
-    const { dl, characters, partyIds } = battle;
+    const { dl, characters, partyIds, getEquipName, effectiveStats } = battle;
+    const [sortMode, setSortMode] = useState<SortMode>("default");
 
     // 未配置キャラに加え、自動周回中（dungeon）のキャラも選択候補として表示する。
-    // 未配置を先・周回中を後に並べる。
-    const eligible = characters
-        .filter((c) => c.assignment === null || c.assignment.type === "dungeon")
-        .sort((a, b) => (a.assignment === null ? 0 : 1) - (b.assignment === null ? 0 : 1));
+    // 周回配置は解除せずパーティに編成でき、攻略中だけ周回報酬が止まる。
+    const eligible = characters.filter(
+        (c) => c.assignment === null || c.assignment.type === "dungeon",
+    );
+
+    // デフォルトは「未配置を先・周回中を後」。他は各キー降順（武器名のみ昇順・未装備は末尾）。
+    const sorted = [...eligible].sort((a, b) => {
+        switch (sortMode) {
+            case "level":
+                return b.battleLevel - a.battleLevel;
+            case "attack":
+                return effectiveStats(b).atk - effectiveStats(a).atk;
+            case "magic":
+                return effectiveStats(b).mag - effectiveStats(a).mag;
+            case "weapon": {
+                const wa = getEquipName(a.equipment.weapon) ?? "";
+                const wb = getEquipName(b.equipment.weapon) ?? "";
+                if (!wa && !wb) return 0;
+                if (!wa) return 1; // 未装備は末尾へ
+                if (!wb) return -1;
+                return wa.localeCompare(wb, "ja");
+            }
+            default:
+                return (a.assignment === null ? 0 : 1) - (b.assignment === null ? 0 : 1);
+        }
+    });
 
     return (
-        <div className="p-4">
+        <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-y-auto p-4">
             <div className="flex items-center gap-3 mb-4">
                 <button
                     onClick={() => router.back()}
@@ -36,34 +69,45 @@ export default function PartySelectView({ battle }: Props) {
                 </button>
                 <h1 className="text-lg font-bold text-ink">DL{dl} パーティ選択</h1>
             </div>
-            <p className="text-xs text-ink-muted mb-3">1〜5人選択 ({partyIds.length}/5)</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-                {eligible.map((char) => (
+            <div className="flex items-center justify-between gap-2 mb-3">
+                <p className="text-xs text-ink-muted">1〜5人選択 ({partyIds.length}/5)</p>
+                <label className="flex items-center gap-1 text-xs text-ink-muted">
+                    並び替え
+                    <select
+                        value={sortMode}
+                        onChange={(e) => setSortMode(e.target.value as SortMode)}
+                        className="bg-surface border border-line rounded px-1.5 py-1 text-ink"
+                    >
+                        {SORT_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                                {o.label}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+            </div>
+            <div className="flex flex-wrap gap-2">
+                {sorted.map((char) => (
                     <PartyMemberCard key={char.id} char={char} battle={battle} />
                 ))}
             </div>
-            <button
-                onClick={battle.startDungeon}
-                disabled={partyIds.length === 0}
-                className="w-full bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white font-bold py-3 rounded-xl"
-            >
-                挑戦する
-            </button>
+            </div>
+            <div className="shrink-0 border-t border-line bg-surface p-3">
+                <button
+                    onClick={battle.startDungeon}
+                    disabled={partyIds.length === 0}
+                    className="w-full bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white font-bold py-3 rounded-xl"
+                >
+                    挑戦する
+                </button>
+            </div>
         </div>
     );
 }
 
 /** パーティ選択の1枚のカード。装備変更モーダルの開閉状態を内部に持つ。 */
 function PartyMemberCard({ char, battle }: { char: CharacterInstance; battle: DungeonBattle }) {
-    const {
-        characters,
-        invEquipment,
-        partyIds,
-        toggleParty,
-        setAssignment,
-        equip,
-        effectiveStats,
-    } = battle;
+    const { characters, invEquipment, partyIds, toggleParty, equip, effectiveStats } = battle;
     const [equipSlot, setEquipSlot] = useState<EquipmentSlotId | null>(null);
 
     const master = getCharacterMaster(char.masterId);
@@ -74,9 +118,8 @@ function PartyMemberCard({ char, battle }: { char: CharacterInstance; battle: Du
     const expPct = Math.min(100, Math.round((expCur / expNeeded) * 100));
     const st = effectiveStats(char);
 
-    // 周回中のキャラは選択時に配置を解除してからパーティへ加える。
+    // 周回配置は解除せずパーティに加える（攻略中のみ周回報酬が止まる）。
     function handleSelect() {
-        if (isCycling) setAssignment(char.id, null);
         toggleParty(char.id);
     }
 
@@ -102,7 +145,7 @@ function PartyMemberCard({ char, battle }: { char: CharacterInstance; battle: Du
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-ink-muted">
                             <span>戦闘 Lv.{char.battleLevel}</span>
-                            {isCycling && !sel && (
+                            {isCycling && (
                                 <span className="text-[10px] text-accent-strong bg-accent-strong/15 px-1 rounded">
                                     🔄 周回中
                                 </span>

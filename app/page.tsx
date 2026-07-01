@@ -67,7 +67,7 @@ export default function HomePage() {
 
     return (
         <div
-            className="relative min-h-full flex flex-col bg-cover bg-center bg-no-repeat p-4"
+            className="relative h-full overflow-hidden flex flex-col bg-cover bg-center bg-no-repeat p-4"
             style={{ backgroundImage: `url(${BASE_PATH}/bg/home.webp)` }}
         >
             {/* Quick nav（右上・縦並びアイコン） */}
@@ -92,12 +92,10 @@ export default function HomePage() {
                 ))}
             </div>
 
-            {/* 上部の余白（キャラを下端に寄せる） */}
-            <div className="flex-1" />
-
-            {/* ホームにいるメンバー（親愛度重みでランダムに1〜3名を大きく表示） */}
-            {selectedChars.length > 0 && (
-                <div className="flex items-end justify-center gap-3">
+            {/* ホームにいるメンバー（親愛度重みでランダムに1〜3名を大きく表示）。
+                行が残りの高さを占め、立ち絵は親要素の高さを超えないよう収める。 */}
+            {selectedChars.length > 0 ? (
+                <div className="flex-1 min-h-0 flex items-end justify-center gap-3">
                     {selectedChars.map((char, i) => {
                         // 表示数は画面幅で変動：小=1名 / sm=2名 / lg=3名
                         const visClass =
@@ -105,17 +103,18 @@ export default function HomePage() {
                         return (
                             <div
                                 key={char.id}
-                                className={`${visClass} flex-col items-center min-w-0 flex-1 max-w-[60%] sm:max-w-[46%] lg:max-w-[32%]`}
+                                className={`${visClass} flex-col items-center justify-end min-w-0 flex-1 h-full`}
                             >
                                 {/* 交遊ボタンは画像の上側 */}
                                 <button
                                     onClick={() => socialize(char.id)}
                                     disabled={socializedThisCycle}
-                                    className="mb-1 text-sm px-3 py-1 rounded-full bg-pink-700 hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold shadow transition-colors"
+                                    className="mb-1 shrink-0 text-sm px-3 py-1 rounded-full bg-pink-700 hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold shadow transition-colors"
                                 >
                                     {char.socializedThisCycle ? "交遊済" : "交遊"}
                                 </button>
-                                <div className="relative w-full aspect-1/2">
+                                {/* 高さは親要素（home.webp の領域）を上限にし、幅は aspect から導出（object-contain で収める） */}
+                                <div className="relative w-full aspect-1/2 max-h-[calc(100%-2.5rem)] min-h-0">
                                     <CharacterPortrait
                                         masterId={char.masterId}
                                         className="object-contain object-bottom"
@@ -126,6 +125,8 @@ export default function HomePage() {
                         );
                     })}
                 </div>
+            ) : (
+                <div className="flex-1" />
             )}
 
             {eligible.length === 0 && characters.length > 0 && (
